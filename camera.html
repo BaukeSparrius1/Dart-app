@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Camerabeeld</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: system-ui, sans-serif; }
+  video { width: 100vw; height: 100vh; object-fit: contain; background: #000; }
+  #bar {
+    position: fixed; top: 12px; left: 12px; display: flex; gap: 8px; align-items: center;
+    background: rgba(0,0,0,.6); color: #fff; padding: 8px 10px; border-radius: 8px;
+    transition: opacity .4s;
+  }
+  #bar.hidden { opacity: 0; pointer-events: none; }
+  select, button { font-size: 14px; padding: 4px 8px; }
+  #msg { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #ccc; text-align: center; padding: 24px; pointer-events: none; }
+</style>
+</head>
+<body>
+<video id="v" autoplay playsinline muted></video>
+<div id="msg">Geef Chrome toestemming om de camera te gebruiken…</div>
+<div id="bar">
+  <label for="cam">Camera:</label>
+  <select id="cam"></select>
+  <button id="mirror">Spiegelen</button>
+  <button id="fs">Volledig scherm</button>
+</div>
+<script>
+const v = document.getElementById('v');
+const sel = document.getElementById('cam');
+const msg = document.getElementById('msg');
+const bar = document.getElementById('bar');
+let stream;
+
+async function start(deviceId) {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: deviceId
+        ? { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        : { width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    });
+    v.srcObject = stream;
+    msg.style.display = 'none';
+    await listCams();
+  } catch (e) {
+    msg.style.display = 'flex';
+    msg.textContent = 'Kan de camera niet openen: ' + e.message + '. Sluit andere apps die de camera gebruiken en ververs de pagina.';
+  }
+}
+
+async function listCams() {
+  const devices = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+  const current = stream && stream.getVideoTracks()[0].getSettings().deviceId;
+  sel.innerHTML = '';
+  devices.forEach((d, i) => {
+    const o = document.createElement('option');
+    o.value = d.deviceId;
+    o.textContent = d.label || ('Camera ' + (i + 1));
+    if (d.deviceId === current) o.selected = true;
+    sel.appendChild(o);
+  });
+  // Kies automatisch Camo als die er is en nog niet geselecteerd is
+  const camo = devices.find(d => /camo/i.test(d.label));
+  if (camo && camo.deviceId !== current && !start.autoPicked) {
+    start.autoPicked = true;
+    start(camo.deviceId);
+  }
+}
+
+sel.onchange = () => start(sel.value);
+document.getElementById('mirror').onclick = () => {
+  v.style.transform = v.style.transform ? '' : 'scaleX(-1)';
+};
+document.getElementById('fs').onclick = () => {
+  document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+};
+
+// Bediening verbergen na 3 s stilstand van de muis
+let t;
+function showBar() { bar.classList.remove('hidden'); clearTimeout(t); t = setTimeout(() => bar.classList.add('hidden'), 3000); }
+document.addEventListener('mousemove', showBar);
+showBar();
+
+start();
+</script>
+</body>
+</html>
