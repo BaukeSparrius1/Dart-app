@@ -65,6 +65,25 @@
   body.tv #rulesView { display: block; }
   body.tv #rulesCard.empty { display: none; }
 
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 1100px) { .duo { grid-template-columns: 1fr; } }
+  #schemaBox { padding: 14px 16px; }
+  #schemaImg { display: none; width: 100%; height: auto; border-radius: 6px; cursor: zoom-in; background: #fff; }
+  #schemaCard.has #schemaImg { display: block; }
+  #schemaCard.has #schemaDrop { display: none; }
+  #schemaDrop { display: block; border: 2px dashed rgba(242,230,201,.5); border-radius: 10px; padding: 34px 16px; text-align: center; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1.6; }
+  #schemaDrop b { color: var(--cream); font-size: 16px; }
+  #schemaDrop.over, #schemaDrop:hover { border-color: var(--red-2); background: rgba(200,16,46,.12); }
+  .schema-tools { display: none; gap: 6px; padding: 0 16px 14px; }
+  #schemaCard.has .schema-tools { display: flex; }
+  .schema-tools button { font-size: 13px; padding: 4px 9px; border-radius: 4px; border: 1px solid var(--cream); background: var(--green-2); color: #fff; cursor: pointer; }
+  .schema-msg { color: #ffb3bd; font-size: 13px; padding: 0 16px 12px; }
+  #zoomView { display: none; position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.88); align-items: center; justify-content: center; padding: 2vw; cursor: zoom-out; }
+  #zoomView.show { display: flex; }
+  #zoomView img { max-width: 100%; max-height: 100%; border-radius: 6px; background: #fff; }
+  body.tv #schemaCard:not(.has) { display: none; }
+  body.tv .duo:has(#rulesCard.empty) { grid-template-columns: 1fr; }
+
   /* TV-modus: alleen bekijken */
   body.tv .tools, body.tv .x, body.tv #finalBtn, body.tv .edit-only { display: none !important; }
   body.tv input { pointer-events: none; border-color: transparent !important; background: transparent !important; }
@@ -94,11 +113,27 @@
     <div class="scroll"><table id="tbl"></table></div>
     <div class="note edit-only">Typ per team de punten in. Optellen mag direct in het vakje, bijv. <b>3+1</b> als een team twee wedstrijden in één ronde speelt. Klik op een kolom- of teamnaam om die te wijzigen.</div>
   </section>
+  <div class="duo">
   <section class="card" id="rulesCard">
     <h2>Regels</h2>
     <textarea id="rules" class="edit-only" rows="6" placeholder="Typ hier de regels, één regel per lijn. Bijvoorbeeld:&#10;180 gegooid? Het andere team drinkt.&#10;Overgooid = slok.&#10;Bull geraakt? Kies iemand die een shot neemt."></textarea>
     <ul id="rulesView"></ul>
   </section>
+  <section class="card" id="schemaCard">
+    <h2>Speelschema</h2>
+    <div id="schemaBox">
+      <img id="schemaImg" alt="Speelschema" title="Klik om te vergroten">
+      <label id="schemaDrop" class="edit-only">
+        <input type="file" id="schemaFile" accept="image/*" hidden>
+        <b>Afbeelding kiezen</b><br>of hierheen slepen, of plakken met Ctrl+V
+      </label>
+    </div>
+    <div class="schema-tools edit-only">
+      <button id="schemaChange">Andere afbeelding</button>
+      <button id="schemaRemove">Verwijderen</button>
+    </div>
+  </section>
+  </div>
   </div>
   <section class="card">
     <h2>Stand</h2>
@@ -107,6 +142,8 @@
     <button id="finalBtn">Finale starten op 1 bord ▶</button>
   </section>
 </main>
+
+<div id="zoomView" title="Klik om te sluiten"><img id="zoomImg" alt="Speelschema"></div>
 
 <script>
 // --- Navigatie en volledig scherm: werkt los én binnen het gecombineerde bestand ---
@@ -273,6 +310,62 @@ $('rules').value = T.rules || '';
 $('rules').addEventListener('input', () => { T.rules = $('rules').value; renderRules(); save(); });
 renderRules();
 
+// Speelschema als afbeelding (verkleind en opgeslagen in de browser)
+const SCHEMA_KEY = 'darts-schema-img';
+function showSchema(url) {
+  $('schemaImg').src = url || '';
+  $('schemaCard').classList.toggle('has', !!url);
+  const m = document.querySelector('.schema-msg'); if (m) m.remove();
+}
+function schemaError(t) {
+  showSchema(localStorage.getItem(SCHEMA_KEY));
+  const d = document.createElement('div'); d.className = 'schema-msg'; d.textContent = t;
+  $('schemaCard').appendChild(d);
+}
+function loadSchemaFile(file) {
+  if (!file || !file.type.startsWith('image/')) return schemaError('Dat is geen afbeelding.');
+  const fr = new FileReader();
+  fr.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      // Verkleinen tot max. 2000 px en zo opslaan dat het in de browseropslag past
+      for (const [max, type, q] of [[2000, 'image/png'], [2000, 'image/jpeg', .9], [1600, 'image/jpeg', .85], [1200, 'image/jpeg', .8]]) {
+        const k = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+        const url = c.toDataURL(type, q);
+        if (url.length > 3500000) continue;
+        try { localStorage.setItem(SCHEMA_KEY, url); showSchema(url); return; } catch (e) {}
+      }
+      schemaError('De afbeelding is te groot om op te slaan. Probeer een kleinere of een screenshot.');
+    };
+    img.onerror = () => schemaError('Deze afbeelding kan niet worden geopend.');
+    img.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+$('schemaFile').addEventListener('change', e => { loadSchemaFile(e.target.files[0]); e.target.value = ''; });
+$('schemaChange').onclick = () => $('schemaFile').click();
+$('schemaRemove').onclick = () => {
+  if (!confirm('Speelschema verwijderen?')) return;
+  try { localStorage.removeItem(SCHEMA_KEY); } catch (e) {}
+  showSchema(null);
+};
+const drop = $('schemaDrop');
+['dragenter', 'dragover'].forEach(t => $('schemaCard').addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(t => $('schemaCard').addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+$('schemaCard').addEventListener('drop', e => loadSchemaFile(e.dataTransfer.files[0]));
+document.addEventListener('paste', e => {
+  if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+  const item = [...(e.clipboardData || {}).items || []].find(i => i.type.startsWith('image/'));
+  if (item) { e.preventDefault(); loadSchemaFile(item.getAsFile()); }
+});
+$('schemaImg').onclick = () => { $('zoomImg').src = $('schemaImg').src; $('zoomView').classList.add('show'); };
+$('zoomView').onclick = () => $('zoomView').classList.remove('show');
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('zoomView').classList.remove('show'); });
+try { showSchema(localStorage.getItem(SCHEMA_KEY)); } catch (e) {}
+
 // TV-modus
 function setTv(on) { document.body.classList.toggle('tv', on); store.set('darts-klassement-tv', on); if (on) document.activeElement.blur(); }
 $('tvBtn').onclick = () => setTv(true);
@@ -281,6 +374,9 @@ document.addEventListener('keydown', e => {
   const a = document.activeElement;
   if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
   if (e.key === 'h' || e.key === 'H') setTv(!document.body.classList.contains('tv'));
+  if ((e.key === 's' || e.key === 'S') && $('schemaCard').classList.contains('has')) {
+    $('zoomView').classList.contains('show') ? $('zoomView').classList.remove('show') : $('schemaImg').click();
+  }
   if (e.key === 'f' || e.key === 'F') toggleFs();
 });
 

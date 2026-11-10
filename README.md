@@ -48,4 +48,5 @@ Extra sneltoetsen: **L** = paneel naar de andere kant, **[ ]** = paneel smaller/
 - Typ per team de punten. Optellen in het vakje mag (`3+1`). Enter springt naar het vakje eronder.
 - **Finale starten** zet de nummers 1 en 2 als teams op de 1-bordpagina en opent die.
 - Onder de tabel staat een tekstvak voor **regels** (bijv. van het drankspel), één regel per lijn. In TV-modus worden ze als lijst getoond.
+- Naast de regels staat een vak **Speelschema** voor een afbeelding (kiezen, slepen of plakken met Ctrl+V). Klik erop of druk op **S** om hem schermvullend te tonen.
 - **H** = TV-modus (alleen bekijken), **F** = volledig scherm.
