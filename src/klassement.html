@@ -86,7 +86,7 @@
   <section class="card">
     <h2>Stand</h2>
     <ol class="rank" id="rank"></ol>
-    <div class="note">De nummers <b>1 en 2</b> spelen de finale.</div>
+    <div class="note">De nummers <b>1 en 2</b> spelen de finale. De teamnamen hier verschijnen in de keuzemenu's bij 1 bord en 2 borden.</div>
     <button id="finalBtn">Finale starten op 1 bord ▶</button>
   </section>
 </main>
@@ -113,14 +113,15 @@ let uid = Date.now();
 const id = () => (uid++).toString(36);
 
 function defaults() {
-  const cols = [];
+  // vaste id's, gelijk aan die van de wedstrijdpagina's
+  const cols = []; let n = 0;
   for (let r = 1; r <= 4; r++) {
-    cols.push({ id: id(), name: 'Ronde ' + r, kind: 'darts' });
-    if (r < 4) cols.push({ id: id(), name: 'Minigame ' + r, kind: 'mini' });
+    cols.push({ id: 'c' + (++n), name: 'Ronde ' + r, kind: 'darts' });
+    if (r < 4) cols.push({ id: 'c' + (++n), name: 'Minigame ' + r, kind: 'mini' });
   }
   return {
     title: 'Darttoernooi',
-    teams: [1, 2, 3, 4, 5].map(n => ({ id: id(), name: 'Team ' + n })),
+    teams: [1, 2, 3, 4, 5].map(i => ({ id: 't' + i, name: 'Team ' + i })),
     cols, cells: {}
   };
 }
@@ -234,12 +235,13 @@ $('finalBtn').onclick = () => {
     alert('Gelijke stand om de tweede plek (' + list.filter(x => x.pts === list[1].pts).map(x => x.t.name).join(', ') + '). Beslis eerst wie de finale speelt, bijvoorbeeld met een bull-off, en geef dat team een bonuspunt.');
     return;
   }
-  const a = list[0].t.name, b = list[1].t.name;
-  if (!confirm('Finale starten: ' + a + ' vs ' + b + '?\nDe huidige stand op de 1-bordpagina wordt vervangen.')) return;
+  const a = list[0].t, b = list[1].t;
+  if (!confirm('Finale starten: ' + a.name + ' vs ' + b.name + '?\nDe huidige stand op de 1-bordpagina wordt vervangen. Best of en startscore stel je daar in.')) return;
   const old = store.get('darts-match-v1') || {};
+  const bestOf = old.bestOf || 5, start = old.start || 301;
   store.set('darts-match-v1', {
-    names: [a, b], firstTo: old.firstTo || 3, legs: [0, 0], starter: 0, turn: 0,
-    rem: [301, 301], tot: [0, 0], cnt: [0, 0], last: [null, null], winner: null, hist: []
+    teams: [a.id, b.id], bestOf, start, legs: [0, 0], starter: 0, turn: 0,
+    rem: [start, start], tot: [0, 0], cnt: [0, 0], last: [null, null], winner: null, hist: []
   });
   goPage('een-bord.html');
 };

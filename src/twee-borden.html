@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Darts 301</title>
+<title>Darts – 2 borden</title>
 <style>
   :root { --green: #0d4a2b; --green-2: #146b3e; --red: #c8102e; --red-2: #e3263f; --cream: #f2e6c9; --panel: rgba(9,46,27,.86); --muted: #b9cdbf; --accent: var(--red-2); }
   * { box-sizing: border-box; }
@@ -47,7 +47,12 @@
   .player.active { border-color: var(--cream); background: var(--red); }
   .player.active::before { content: "▶"; position: absolute; left: -1px; top: 3px; color: var(--cream); font-size: clamp(8px, 0.6vw, 11px); }
   .name { font-size: clamp(11px, 0.9vw, 15px); font-weight: 600; outline: none; padding-left: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .name:focus { background: rgba(255,255,255,.1); }
+  select.name { display: block; width: 100%; background: transparent; color: #fff; border: 1px dashed rgba(242,230,201,.45); border-radius: 4px; padding: 1px 4px 1px 8px; font-family: inherit; cursor: pointer; }
+  select.name option { background: var(--green); color: #fff; }
+  body.tv select.name { border-color: transparent; appearance: none; -webkit-appearance: none; pointer-events: none; }
+  .fmt { display: flex; justify-content: space-between; font-size: clamp(9px, 0.65vw, 11px); color: var(--cream); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 0 4px 4px; }
+  .player.won { border-color: var(--cream); background: var(--green-2); }
+  .ctl-lbl { display: flex; align-items: center; gap: 4px; background: var(--panel); color: var(--cream); padding: 2px 4px 2px 8px; border-radius: 6px; font-size: 13px; }
   .rem { font-size: clamp(18px, 2.75vw, 48px); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
   .stats { font-size: clamp(9px, 0.65vw, 11px); color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
   .stats b { color: #fff; }
@@ -83,20 +88,23 @@
       <button class="zreset" title="Zoom herstellen (of dubbelklik op het beeld)">Zoom reset</button>
       <button class="fit">Vullen</button>
       <button class="mir">Spiegelen</button>
+      <label class="ctl-lbl">Best of <select class="bestof"></select></label>
+      <label class="ctl-lbl">Start <select class="start"><option>201</option><option>301</option><option>501</option></select></label>
       <button class="newgame">Nieuwe wedstrijd</button>
     </div>
     <div class="warn">Beide borden gebruiken dezelfde camera. Kies hierboven een andere.</div>
     <div class="flash"></div>
     <div class="score">
+      <div class="fmt"><span class="fmt-l"></span><span class="fmt-r"></span></div>
       <div class="players">
         <div class="player" data-p="0">
-          <div class="name" contenteditable="true" spellcheck="false"></div>
+          <select class="name" title="Team kiezen (namen stel je in bij Klassement)"></select>
           <div class="rem"></div>
           <div class="stats"><span>Legs <b class="legs"></b></span><span>Gem. <b class="avg"></b></span><span>Laatste <b class="last"></b></span></div>
           <div class="co"></div>
         </div>
         <div class="player" data-p="1">
-          <div class="name" contenteditable="true" spellcheck="false"></div>
+          <select class="name" title="Team kiezen (namen stel je in bij Klassement)"></select>
           <div class="rem"></div>
           <div class="stats"><span>Legs <b class="legs"></b></span><span>Gem. <b class="avg"></b></span><span>Laatste <b class="last"></b></span></div>
           <div class="co"></div>
@@ -122,9 +130,29 @@ document.addEventListener('click', e => {
   if (a && inShell) { e.preventDefault(); goPage(a.getAttribute('href')); }
 });
 
-const START = 301;
 const IMPOSSIBLE = new Set([163,166,169,172,173,175,176,178,179]);
 const STORE_KEY = 'darts301-v1';
+
+/* ---------- Teams uit het klassement ---------- */
+function loadTournament() {
+  let T = null;
+  try { T = JSON.parse(localStorage.getItem('darts-toernooi-v1')); } catch (e) {}
+  if (!T || !Array.isArray(T.teams) || !T.teams.length) {
+    const cols = []; let n = 0;
+    for (let r = 1; r <= 4; r++) {
+      cols.push({ id: 'c' + (++n), name: 'Ronde ' + r, kind: 'darts' });
+      if (r < 4) cols.push({ id: 'c' + (++n), name: 'Minigame ' + r, kind: 'mini' });
+    }
+    T = { title: 'Darttoernooi', teams: [1, 2, 3, 4, 5].map(i => ({ id: 't' + i, name: 'Team ' + i })), cols, cells: {} };
+    try { localStorage.setItem('darts-toernooi-v1', JSON.stringify(T)); } catch (e) {}
+  }
+  return T;
+}
+const TOURN = loadTournament();
+const teamName = id => (TOURN.teams.find(t => t.id === id) || { name: '(team verwijderd)' }).name;
+const teamIdByName = n => (TOURN.teams.find(t => t.name === n) || {}).id;
+const BEST_OF = [1, 3, 5, 7, 9, 11];
+const firstTo = s => Math.ceil(s.bestOf / 2);
 
 /* ---------- Uitgooi-suggesties (single out: elke pijl mag de laatste zijn) ---------- */
 const darts = [];
@@ -159,8 +187,19 @@ function save() {
 }
 
 /* ---------- Spelstatus ---------- */
-function newMatch(names) {
-  return { names: names, legs: [0, 0], starter: 0, turn: 0, rem: [START, START], hist: [], tot: [0, 0], cnt: [0, 0], last: [null, null] };
+function newMatch(teams, bestOf, start) {
+  return { teams: teams, bestOf: bestOf || 3, start: start || 301, winner: null, legs: [0, 0], starter: 0, turn: 0, rem: [start || 301, start || 301], hist: [], tot: [0, 0], cnt: [0, 0], last: [null, null] };
+}
+// Oude opgeslagen standen (met losse namen) omzetten naar teams uit het klassement
+function migrate(st, idx) {
+  const def = [TOURN.teams[(idx * 2) % TOURN.teams.length].id, TOURN.teams[(idx * 2 + 1) % TOURN.teams.length].id];
+  if (!st) return newMatch(def, 3, 301);
+  if (!st.teams) st.teams = [0, 1].map(i => teamIdByName(st.names && st.names[i]) || def[i]);
+  if (!st.bestOf) st.bestOf = 3;
+  if (!st.start) st.start = 301;
+  if (st.winner === undefined) st.winner = null;
+  delete st.names;
+  return st;
 }
 
 const saved = load();
@@ -177,18 +216,31 @@ function makeBoard(idx) {
     flash: el.querySelector('.flash'),
     msg: el.querySelector('.msg'),
     stream: null,
-    state: (saved.boards && saved.boards[idx]) || newMatch(['Speler ' + (idx*2+1), 'Speler ' + (idx*2+2)])
+    state: migrate(saved.boards && saved.boards[idx], idx)
   };
   el.querySelector('.title').innerHTML = 'Bord ' + (idx + 1) + '<span class="zoomlbl"></span>';
   setupZoom(b);
   boards.push(b);
 
-  // Namen bewerken
+  // Teamkeuze (namen komen uit het klassement)
   el.querySelectorAll('.player').forEach(p => {
-    const n = p.querySelector('.name');
-    const i = +p.dataset.p;
-    n.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); n.blur(); } });
-    n.addEventListener('blur', () => { b.state.names[i] = n.textContent.trim() || ('Speler ' + (idx*2+i+1)); render(b); save(); });
+    const sel = p.querySelector('.name'), i = +p.dataset.p;
+    TOURN.teams.forEach(t => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; sel.appendChild(o); });
+    sel.addEventListener('change', () => { b.state.teams[i] = sel.value; render(b); save(); b.input.focus(); });
+  });
+  const bo = el.querySelector('.bestof');
+  BEST_OF.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; bo.appendChild(o); });
+  bo.addEventListener('change', () => {
+    const s = b.state; s.bestOf = +bo.value;
+    const w = [0, 1].find(i => s.legs[i] >= firstTo(s));
+    s.winner = w === undefined ? null : w;
+    render(b); save(); b.input.focus();
+  });
+  const stSel = el.querySelector('.start');
+  stSel.addEventListener('change', () => {
+    const s = b.state, v = +stSel.value;
+    if (s.hist.length && !confirm('Startscore wijzigen naar ' + v + '? Dit start een nieuwe wedstrijd op bord ' + (idx + 1) + '.')) { stSel.value = s.start; return; }
+    b.state = newMatch(s.teams.slice(), s.bestOf, v); render(b); save(); b.input.focus();
   });
 
   b.input.addEventListener('keydown', e => {
@@ -198,7 +250,7 @@ function makeBoard(idx) {
   el.querySelector('.undo').onclick = () => { undo(b); b.input.focus(); };
   el.querySelector('.newgame').onclick = () => {
     if (confirm('Nieuwe wedstrijd op bord ' + (idx+1) + '? De huidige stand gaat verloren.')) {
-      b.state = newMatch(b.state.names.slice()); render(b); save();
+      b.state = newMatch(b.state.teams.slice(), b.state.bestOf, b.state.start); render(b); save();
     }
   };
   el.querySelector('.fit').onclick = () => b.video.classList.toggle('cover');
@@ -283,13 +335,14 @@ function setupZoom(b) {
 function submit(b, txt) {
   const s = b.state;
   if (txt === '') return;
+  if (s.winner !== null) return showFlash(b, 'Wedstrijd voorbij<br><small>Kies Nieuwe wedstrijd</small>', 2000);
   if (!/^\d{1,3}$/.test(txt)) return showFlash(b, 'Ongeldig');
   const pts = parseInt(txt, 10);
   if (pts > 180 || IMPOSSIBLE.has(pts)) return showFlash(b, pts + '?<br><small>onmogelijke score</small>');
 
   const p = s.turn;
   const before = s.rem[p];
-  const snapshot = JSON.stringify({ rem: s.rem, tot: s.tot, cnt: s.cnt, last: s.last, turn: s.turn, legs: s.legs, starter: s.starter });
+  const snapshot = JSON.stringify({ rem: s.rem, tot: s.tot, cnt: s.cnt, last: s.last, turn: s.turn, legs: s.legs, starter: s.starter, winner: s.winner });
   s.hist.push(snapshot);
   if (s.hist.length > 200) s.hist.shift();
 
@@ -301,11 +354,16 @@ function submit(b, txt) {
   } else if (pts === before) {      // uitgegooid
     s.tot[p] += pts; s.last[p] = pts;
     s.legs[p]++;
-    showFlash(b, s.names[p] + '<br>wint de leg!', 2500);
-    s.starter = 1 - s.starter;
-    s.turn = s.starter;
-    s.rem = [START, START];
-    s.last = [null, null];
+    if (s.legs[p] >= firstTo(s)) {
+      s.winner = p; s.rem[p] = 0;
+      showFlash(b, esc(teamName(s.teams[p])) + '<br>wint de wedstrijd!', 5000);
+    } else {
+      showFlash(b, esc(teamName(s.teams[p])) + '<br>wint de leg!', 2500);
+      s.starter = 1 - s.starter;
+      s.turn = s.starter;
+      s.rem = [s.start, s.start];
+      s.last = [null, null];
+    }
   } else {
     s.tot[p] += pts; s.last[p] = pts; s.rem[p] = before - pts;
     if (pts === 180) showFlash(b, '180!');
@@ -326,16 +384,25 @@ function render(b) {
   const s = b.state;
   b.el.querySelectorAll('.player').forEach(pe => {
     const i = +pe.dataset.p;
-    pe.classList.toggle('active', s.turn === i);
-    const n = pe.querySelector('.name');
-    if (document.activeElement !== n) n.textContent = s.names[i];
+    pe.classList.toggle('active', s.winner === null && s.turn === i);
+    pe.classList.toggle('won', s.winner === i);
+    const sel = pe.querySelector('.name');
+    if (![...sel.options].some(o => o.value === s.teams[i])) {     // team bestaat niet meer in het klassement
+      const o = document.createElement('option'); o.value = s.teams[i]; o.textContent = teamName(s.teams[i]); sel.appendChild(o);
+    }
+    sel.value = s.teams[i];
     pe.querySelector('.rem').textContent = s.rem[i];
     pe.querySelector('.legs').textContent = s.legs[i];
     pe.querySelector('.avg').textContent = s.cnt[i] ? (s.tot[i] / s.cnt[i]).toFixed(1) : '–';
     pe.querySelector('.last').textContent = s.last[i] === null ? '–' : s.last[i];
-    pe.querySelector('.co').textContent = s.rem[i] <= 180 ? ('Uit: ' + checkout(s.rem[i])) : '';
+    pe.querySelector('.co').textContent = s.winner === null && s.rem[i] <= 180 ? ('Uit: ' + checkout(s.rem[i])) : '';
   });
+  b.el.querySelector('.fmt-l').textContent = s.start + ' · Best of ' + s.bestOf;
+  b.el.querySelector('.fmt-r').textContent = s.winner !== null ? teamName(s.teams[s.winner]) + ' wint' : 'Leg ' + (s.legs[0] + s.legs[1] + 1);
+  b.el.querySelector('.bestof').value = s.bestOf;
+  b.el.querySelector('.start').value = s.start;
 }
+function esc(t) { return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 let flashTimer = {};
 function showFlash(b, html, ms) {
@@ -452,7 +519,7 @@ const activeBoard = () => boards.find(b => document.activeElement === b.input) |
 
 document.addEventListener('keydown', e => {
   // Niet ingrijpen tijdens het bewerken van een spelersnaam
-  if (document.activeElement && document.activeElement.isContentEditable) return;
+  if (document.activeElement && (document.activeElement.isContentEditable || document.activeElement.tagName === 'SELECT')) return;
   if (e.ctrlKey || e.altKey || e.metaKey) {
     if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(activeBoard()); }
     return;

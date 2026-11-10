@@ -1,6 +1,6 @@
 # Darts 301 – camerabeeld met scorebord
 
-Toont twee camerabeelden (één per dartbord) naast elkaar met een 301-scorebord (single out, twee spelers per bord) als overlay. Draait volledig in Chrome, zonder installatie of server.
+Camerabeelden van één of twee dartborden met een scorebord (single out, 201/301/501, best of 1–11) als overlay, plus een klassement voor het hele toernooi. Draait volledig in Chrome, zonder installatie of server.
 
 ## Gebruik
 
@@ -37,9 +37,9 @@ Wisselen tussen de pagina's kan via de knoppen *1 bord*, *2 borden* en *Klasseme
 
 ## 1 bord
 
-Beweeg de muis om de instellingen te tonen: teamnamen, aantal legs om te winnen, camera voor het bord en voor de facecam.
-Extra sneltoetsen: **P** = facecam naar een andere hoek, **[ ]** = facecam kleiner/groter, **C** = facecam aan/uit.
-In de facecam staat de naam van het team dat aan de beurt is.
+Links (of rechts) een paneel met de facecam, het scorebord en de stand van het klassement; daarnaast het bord groot in beeld.
+Beweeg de muis om de instellingen te tonen: teams (keuzemenu, namen uit het klassement), best of 1–11, startscore 201/301/501, camera's en indeling.
+Extra sneltoetsen: **L** = paneel naar de andere kant, **[ ]** = paneel smaller/breder, **C** = facecam aan/uit, **K** = klassement in het paneel aan/uit.
 
 ## Klassement
 

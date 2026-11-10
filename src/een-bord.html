@@ -3,64 +3,74 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Darts Wedstrijd</title>
+<title>Darts – 1 bord</title>
 <style>
-  :root { --green: #0d4a2b; --green-2: #146b3e; --red: #c8102e; --red-2: #e3263f; --cream: #f2e6c9; --panel: rgba(9,46,27,.88); --muted: #b9cdbf; --bg: #04170d; }
+  :root { --green: #0d4a2b; --green-2: #146b3e; --red: #c8102e; --red-2: #e3263f; --cream: #f2e6c9; --panel: rgba(9,46,27,.92); --muted: #b9cdbf; --bg: #04170d; --side: 32vw; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: #fff; overflow: hidden; font-family: system-ui, "Segoe UI", sans-serif; }
 
-  /* ---------- Camera's ---------- */
-  .view { position: absolute; overflow: hidden; background: var(--bg); }
-  #main { inset: 0; }
-  #pip { width: 24vw; aspect-ratio: 16 / 9; border: 3px solid var(--cream); border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.6); z-index: 3; }
-  #pip.tl { top: 16px; left: 16px; } #pip.tr { top: 16px; right: 16px; }
-  #pip.bl { bottom: 16px; left: 16px; } #pip.br { bottom: 16px; right: 16px; }
-  #pip.off { display: none; }
-  .pipname { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,.75)); padding: 14px 10px 6px; font-weight: 700; font-size: clamp(11px, 1vw, 16px); color: var(--cream); pointer-events: none; z-index: 2; }
+  /* ---------- Indeling: zijpaneel (facecam + score) en bord ---------- */
+  #layout { display: flex; width: 100vw; height: 100vh; }
+  body.side-right #layout { flex-direction: row-reverse; }
+  #side { width: var(--side); flex: none; display: flex; flex-direction: column; gap: 12px; padding: 14px; background: linear-gradient(180deg, #0b3a22, var(--bg)); border-right: 6px solid var(--red); overflow: hidden; }
+  body.side-right #side { border-right: 0; border-left: 6px solid var(--red); }
+  #boardArea { position: relative; flex: 1; min-width: 0; }
+
+  .view { position: relative; overflow: hidden; background: var(--bg); }
+  #main { position: absolute; inset: 0; }
+  #pip { width: 100%; aspect-ratio: 16 / 9; flex: none; border: 3px solid var(--cream); border-radius: 10px; }
+  body.noface #pip { display: none; }
+  .pipname { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,.8)); padding: 18px 12px 8px; font-weight: 800; font-size: clamp(13px, 1.3vw, 24px); color: var(--cream); pointer-events: none; z-index: 2; }
   .zw { position: absolute; inset: 0; transform-origin: 0 0; will-change: transform; }
   .view video { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--bg); }
+  #pip video { object-fit: cover; }
   .view video.cover { object-fit: cover; }
   .view video.mirror { transform: scaleX(-1); }
   .view.zoomed { cursor: grab; } .view.dragging { cursor: grabbing; }
   .msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--cream); text-align: center; padding: 16px; pointer-events: none; font-size: 14px; }
 
   /* ---------- Scorebord ---------- */
-  #score { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 4; width: min(46vw, 620px); min-width: 320px; }
-  .sb-head { display: flex; justify-content: space-between; align-items: center; background: var(--red); color: #fff; border: 2px solid var(--cream); border-bottom: 0; border-radius: 8px 8px 0 0; padding: 3px 12px; font-size: clamp(10px, .8vw, 13px); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
+  .sb-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--red); color: #fff; border: 2px solid var(--cream); border-bottom: 0; border-radius: 8px 8px 0 0; padding: 4px 12px; font-size: clamp(10px, .85vw, 15px); font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
   .sb { background: var(--panel); border: 2px solid var(--cream); border-radius: 0 0 8px 8px; overflow: hidden; }
-  .row { display: grid; grid-template-columns: 18px 1fr auto auto; align-items: center; gap: 10px; padding: 4px 12px 4px 6px; border-top: 1px solid rgba(242,230,201,.15); }
+  .row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid rgba(242,230,201,.15); position: relative; }
   .row:first-child { border-top: 0; }
   .row.active { background: var(--red); }
-  .row .arrow { color: var(--cream); font-size: clamp(9px, .7vw, 12px); visibility: hidden; text-align: center; }
-  .row.active .arrow { visibility: visible; }
-  .team { font-size: clamp(13px, 1.2vw, 20px); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .team small { display: block; font-size: .62em; font-weight: 500; color: var(--muted); }
+  .row.active::before { content: "▶"; position: absolute; left: 3px; top: 50%; transform: translateY(-50%); color: var(--cream); font-size: clamp(8px, .6vw, 11px); }
+  .row.won { background: var(--green-2); }
+  .team { font-size: clamp(15px, 1.5vw, 28px); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 8px; }
+  .team small { display: block; font-size: .55em; font-weight: 500; color: var(--muted); }
   .row.active .team small { color: var(--cream); }
-  .legs { min-width: 2.1em; text-align: center; font-size: clamp(13px, 1.2vw, 20px); font-weight: 800; background: rgba(0,0,0,.3); border-radius: 4px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
-  .rem { min-width: 2.6em; text-align: right; font-size: clamp(22px, 2.3vw, 40px); font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .sb-foot { display: flex; justify-content: space-between; gap: 10px; padding: 3px 12px; font-size: clamp(9px, .7vw, 12px); color: var(--muted); border-top: 1px solid rgba(242,230,201,.15); }
-  .sb-foot .co { color: var(--cream); font-weight: 700; }
-  .entry { display: flex; gap: 4px; margin-top: 5px; }
-  .entry input { flex: 1; min-width: 0; font-size: clamp(12px, .9vw, 15px); padding: 3px 8px; border-radius: 6px; border: 2px solid var(--green-2); background: #062114; color: #fff; }
+  .legs { min-width: 2em; text-align: center; font-size: clamp(15px, 1.4vw, 26px); font-weight: 900; background: rgba(0,0,0,.3); border-radius: 5px; padding: 2px 6px; font-variant-numeric: tabular-nums; }
+  .rem { min-width: 2.4em; text-align: right; font-size: clamp(28px, 3.4vw, 64px); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .sb-foot { display: flex; justify-content: space-between; gap: 10px; padding: 5px 12px; font-size: clamp(10px, .8vw, 14px); color: var(--muted); border-top: 1px solid rgba(242,230,201,.15); }
+  .sb-foot .co { color: var(--cream); font-weight: 800; }
+  .entry { display: flex; gap: 4px; margin-top: 6px; }
+  .entry input { flex: 1; min-width: 0; font-size: clamp(13px, 1vw, 17px); padding: 4px 8px; border-radius: 6px; border: 2px solid var(--green-2); background: #062114; color: #fff; }
   .entry input:focus { border-color: var(--red-2); outline: none; }
-  .entry button { font-size: clamp(10px, .8vw, 13px); padding: 3px 8px; border-radius: 6px; border: 0; cursor: pointer; background: var(--red); color: #fff; font-weight: 600; }
+  .entry button { font-size: clamp(11px, .85vw, 14px); padding: 4px 9px; border-radius: 6px; border: 0; cursor: pointer; background: var(--red); color: #fff; font-weight: 600; }
 
-  /* ---------- Instellingen ---------- */
-  #setup { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 6; background: var(--panel); border: 2px solid var(--cream); border-radius: 10px; padding: 8px 12px; display: grid; grid-template-columns: auto auto; gap: 6px 14px; font-size: 13px; color: var(--cream); transition: opacity .4s; max-width: calc(100vw - 32px); }
+  /* ---------- Mini-klassement ---------- */
+  #standings { margin-top: auto; background: var(--panel); border: 2px solid var(--cream); border-radius: 8px; overflow: hidden; }
+  body.nostand #standings { display: none; }
+  #standings h3 { margin: 0; background: var(--green-2); padding: 4px 12px; font-size: clamp(10px, .8vw, 14px); text-transform: uppercase; letter-spacing: .5px; color: var(--cream); }
+  #standings ol { list-style: none; margin: 0; padding: 4px 6px; }
+  #standings li { display: grid; grid-template-columns: 1.8em 1fr auto; gap: 6px; padding: 3px 6px; font-size: clamp(11px, .95vw, 17px); border-radius: 4px; }
+  #standings li.playing { background: rgba(200,16,46,.45); }
+  #standings .p { color: var(--cream); font-weight: 800; text-align: center; }
+  #standings .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #standings .t { font-weight: 800; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Instellingen (zweven over het bord) ---------- */
+  #setup { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 6; background: var(--panel); border: 2px solid var(--cream); border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--cream); transition: opacity .4s; }
   #setup.hidden { opacity: 0; pointer-events: none; }
   #setup .grp { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  #setup .grp > b { min-width: 74px; }
-  #setup input, #setup select, #setup button { font-size: 13px; padding: 3px 7px; border-radius: 4px; border: 1px solid var(--cream); background: var(--green); color: #fff; }
-  #setup input[type=text] { width: 150px; }
-  #setup input[type=number] { width: 52px; }
-  #setup select { max-width: 200px; }
-  #setup button { cursor: pointer; }
-  #setup a.nav { color: #fff; text-decoration: none; background: var(--green); border: 1px solid var(--cream); border-radius: 4px; padding: 3px 8px; }
-  #setup a.nav.cur { background: var(--red); }
-  #setup button.red { background: var(--red); }
-  #help { grid-column: 1 / -1; font-size: 11px; color: var(--muted); text-align: center; }
+  #setup .grp > b { min-width: 82px; }
+  #setup select, #setup button, #setup a.nav { font-size: 13px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--cream); background: var(--green); color: #fff; text-decoration: none; cursor: pointer; }
+  #setup select { max-width: 220px; }
+  #setup .red, #setup a.nav.cur { background: var(--red); }
+  #help { font-size: 11px; color: var(--muted); }
 
-  .flash { position: absolute; left: 50%; top: 42%; transform: translate(-50%,-50%); font-size: clamp(30px, 5vw, 84px); font-weight: 900; color: var(--red-2); -webkit-text-stroke: 2px var(--cream); text-shadow: 0 0 24px #000; pointer-events: none; opacity: 0; transition: opacity .3s; text-align: center; z-index: 8; }
+  .flash { position: fixed; left: 50%; top: 42%; transform: translate(-50%,-50%); font-size: clamp(30px, 5vw, 84px); font-weight: 900; color: var(--red-2); -webkit-text-stroke: 2px var(--cream); text-shadow: 0 0 24px #000; pointer-events: none; opacity: 0; transition: opacity .3s; text-align: center; z-index: 8; }
   .flash.show { opacity: 1; }
   .flash small { display: block; font-size: .38em; -webkit-text-stroke: 0; color: var(--cream); margin-top: .3em; }
 
@@ -72,52 +82,58 @@
 </style>
 </head>
 <body>
+<div id="layout">
+  <aside id="side">
+    <div class="view" id="pip"><div class="zw"><video autoplay playsinline muted></video></div><div class="msg"></div><div class="pipname" id="pipname"></div></div>
+    <div id="score">
+      <div class="sb-head"><span id="fmt"></span><span id="legNo"></span></div>
+      <div class="sb">
+        <div class="row" data-t="0"><div class="team"></div><div class="legs"></div><div class="rem"></div></div>
+        <div class="row" data-t="1"><div class="team"></div><div class="legs"></div><div class="rem"></div></div>
+        <div class="sb-foot"><span id="stats"></span><span class="co" id="co"></span></div>
+      </div>
+      <div class="entry">
+        <input type="text" id="in" inputmode="numeric" placeholder="Score + Enter" maxlength="3" autocomplete="off">
+        <button class="undo" id="undo" title="Laatste beurt ongedaan maken (U)">↶ Ongedaan</button>
+      </div>
+    </div>
+    <div id="standings"><h3 id="stTitle">Klassement</h3><ol id="stList"></ol></div>
+  </aside>
 
-<div class="view" id="main"><div class="zw"><video autoplay playsinline muted></video></div><div class="msg">Camera wordt geopend…</div></div>
-<div class="view br" id="pip"><div class="zw"><video autoplay playsinline muted></video></div><div class="msg"></div><div class="pipname"></div></div>
+  <div id="boardArea">
+    <div class="view" id="main"><div class="zw"><video autoplay playsinline muted></video></div><div class="msg">Camera wordt geopend…</div></div>
 
-<div id="setup">
-  <div class="grp"><b>Teams</b>
-    <input type="text" id="t0" maxlength="30" placeholder="Team 1" list="teamlist">
-    <span>vs</span>
-    <input type="text" id="t1" maxlength="30" placeholder="Team 2" list="teamlist">
-    <datalist id="teamlist"></datalist>
-  </div>
-  <div class="grp"><b>Pagina</b>
-    <a class="nav cur" href="een-bord.html">1 bord</a><a class="nav" href="twee-borden.html">2 borden</a><a class="nav" href="klassement.html">Klassement</a>
-  </div>
-  <div class="grp"><b>Wedstrijd</b>
-    <label>First to <input type="number" id="firstTo" min="1" max="21"> legs</label>
-    <button class="red" id="newMatch">Nieuwe wedstrijd</button>
-  </div>
-  <div class="grp"><b>Bordcamera</b>
-    <select id="camMain"></select>
-    <button data-fit="main">Vullen</button>
-    <button data-mir="main">Spiegelen</button>
-    <button data-reset="main">Zoom reset</button>
-  </div>
-  <div class="grp"><b>Facecam</b>
-    <select id="camPip"></select>
-    <button id="swap" title="Bordcamera en facecam omwisselen">⇄ Wissel</button>
-    <button id="pipPos" title="Hoek wisselen (P)">Hoek</button>
-    <button id="pipSmaller" title="Kleiner ([)">－</button>
-    <button id="pipBigger" title="Groter (])">＋</button>
-    <button data-mir="pip">Spiegelen</button>
-    <button id="pipToggle" title="Facecam aan/uit (C)">Aan/uit</button>
-  </div>
-  <div id="help">H = TV-modus · F = volledig scherm · scrollen = zoomen · slepen = verschuiven · R = zoom reset · P = facecam-hoek · [ ] = facecam-grootte · C = facecam aan/uit · U = ongedaan</div>
-</div>
-
-<div id="score">
-  <div class="sb-head"><span id="fmt"></span><span id="legNo"></span></div>
-  <div class="sb">
-    <div class="row" data-t="0"><span class="arrow">▶</span><div class="team"></div><div class="legs"></div><div class="rem"></div></div>
-    <div class="row" data-t="1"><span class="arrow">▶</span><div class="team"></div><div class="legs"></div><div class="rem"></div></div>
-    <div class="sb-foot"><span id="stats"></span><span class="co" id="co"></span></div>
-  </div>
-  <div class="entry">
-    <input type="text" id="in" inputmode="numeric" placeholder="Score + Enter" maxlength="3" autocomplete="off">
-    <button class="undo" id="undo" title="Laatste beurt ongedaan maken (U)">↶ Ongedaan</button>
+    <div id="setup">
+      <div class="grp"><b>Pagina</b>
+        <a class="nav cur" href="een-bord.html">1 bord</a><a class="nav" href="twee-borden.html">2 borden</a><a class="nav" href="klassement.html">Klassement</a>
+      </div>
+      <div class="grp"><b>Wedstrijd</b>
+        <select id="t0" title="Team 1"></select><span>vs</span><select id="t1" title="Team 2"></select>
+        <label>Best of <select id="bestOf"></select></label>
+        <label>Start <select id="start"><option>201</option><option>301</option><option>501</option></select></label>
+        <button class="red" id="newMatch">Nieuwe wedstrijd</button>
+      </div>
+      <div class="grp"><b>Bordcamera</b>
+        <select id="camMain"></select>
+        <button data-fit="main">Vullen</button>
+        <button data-mir="main">Spiegelen</button>
+        <button data-reset="main">Zoom reset</button>
+        <button id="swap" title="Bordcamera en facecam omwisselen">⇄ Wissel met facecam</button>
+      </div>
+      <div class="grp"><b>Facecam</b>
+        <select id="camPip"></select>
+        <button data-mir="pip">Spiegelen</button>
+        <button data-reset="pip">Zoom reset</button>
+        <button id="faceToggle" title="Facecam aan/uit (C)">Aan/uit</button>
+      </div>
+      <div class="grp"><b>Indeling</b>
+        <button id="sideBtn" title="Paneel links/rechts (L)">⇆ Kant wisselen</button>
+        <button id="narrow" title="Paneel smaller ([)">Paneel －</button>
+        <button id="wide" title="Paneel breder (])">Paneel ＋</button>
+        <button id="standBtn" title="Klassement in paneel aan/uit (K)">Klassement aan/uit</button>
+      </div>
+      <div id="help">H = TV-modus · F = volledig scherm · scrollen = zoomen · slepen = verschuiven · R = zoom reset · L = kant wisselen · [ ] = paneelbreedte · C = facecam · K = klassement · U = ongedaan · teamnamen stel je in bij Klassement</div>
+    </div>
   </div>
 </div>
 
@@ -135,14 +151,33 @@ document.addEventListener('click', e => {
   if (a && inShell) { e.preventDefault(); goPage(a.getAttribute('href')); }
 });
 
-const START = 301;
 const IMPOSSIBLE = new Set([163,166,169,172,173,175,176,178,179]);
 const KEY = 'darts-match-v1';
+const BEST_OF = [1, 3, 5, 7, 9, 11];
 const $ = id => document.getElementById(id);
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ---------- Teams uit het klassement ---------- */
+function loadTournament() {
+  let T = store.get('darts-toernooi-v1');
+  if (!T || !Array.isArray(T.teams) || !T.teams.length) {
+    const cols = []; let n = 0;
+    for (let r = 1; r <= 4; r++) {
+      cols.push({ id: 'c' + (++n), name: 'Ronde ' + r, kind: 'darts' });
+      if (r < 4) cols.push({ id: 'c' + (++n), name: 'Minigame ' + r, kind: 'mini' });
+    }
+    T = { title: 'Darttoernooi', teams: [1, 2, 3, 4, 5].map(i => ({ id: 't' + i, name: 'Team ' + i })), cols, cells: {} };
+    store.set('darts-toernooi-v1', T);
+  }
+  return T;
+}
+const TOURN = loadTournament();
+const teamName = id => (TOURN.teams.find(t => t.id === id) || { name: '(team verwijderd)' }).name;
+const teamIdByName = n => (TOURN.teams.find(t => t.name === n) || {}).id;
 
 /* ---------- Uitgooi-suggesties (single out) ---------- */
 const darts = [];
@@ -165,32 +200,72 @@ function checkout(r) {
 }
 
 /* ---------- Wedstrijdstatus ---------- */
-function newMatch(names, firstTo) {
-  return { names, firstTo, legs: [0, 0], starter: 0, turn: 0, rem: [START, START], tot: [0, 0], cnt: [0, 0], last: [null, null], winner: null, hist: [] };
+function newMatch(teams, bestOf, start) {
+  return { teams, bestOf, start, legs: [0, 0], starter: 0, turn: 0, rem: [start, start], tot: [0, 0], cnt: [0, 0], last: [null, null], winner: null, hist: [] };
 }
-let S = store.get(KEY) || newMatch(['Team 1', 'Team 2'], 3);
+const firstTo = () => Math.ceil(S.bestOf / 2);
+let S = store.get(KEY);
+if (!S) S = newMatch([TOURN.teams[0].id, (TOURN.teams[1] || TOURN.teams[0]).id], 3, 301);
+// oudere opgeslagen standen omzetten
+if (!S.teams) S.teams = [0, 1].map(i => teamIdByName(S.names && S.names[i]) || (TOURN.teams[i] || TOURN.teams[0]).id);
+if (!S.bestOf) S.bestOf = S.firstTo ? S.firstTo * 2 - 1 : 3;
+if (!S.start) S.start = 301;
+delete S.names; delete S.firstTo;
 const save = () => store.set(KEY, S);
+
+function fillTeamSelect(sel) {
+  sel.innerHTML = '';
+  TOURN.teams.forEach(t => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; sel.appendChild(o); });
+}
+fillTeamSelect($('t0')); fillTeamSelect($('t1'));
+BEST_OF.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; $('bestOf').appendChild(o); });
 
 function render() {
   document.querySelectorAll('.row').forEach(r => {
     const t = +r.dataset.t;
     r.classList.toggle('active', S.winner === null && S.turn === t);
+    r.classList.toggle('won', S.winner === t);
     const avg = S.cnt[t] ? (S.tot[t] / S.cnt[t]).toFixed(1) : '–';
-    r.querySelector('.team').innerHTML = esc(S.names[t]) + '<small>Gem. ' + avg + ' · Laatste ' + (S.last[t] === null ? '–' : S.last[t]) + '</small>';
+    r.querySelector('.team').innerHTML = esc(teamName(S.teams[t])) + '<small>Gem. ' + avg + ' · Laatste ' + (S.last[t] === null ? '–' : S.last[t]) + '</small>';
     r.querySelector('.legs').textContent = S.legs[t];
     r.querySelector('.rem').textContent = S.rem[t];
   });
-  $('fmt').textContent = '301 · First to ' + S.firstTo;
-  $('legNo').textContent = S.winner !== null ? 'Wedstrijd voorbij' : 'Leg ' + (S.legs[0] + S.legs[1] + 1);
+  $('fmt').textContent = S.start + ' · Best of ' + S.bestOf;
+  $('legNo').textContent = S.winner !== null ? 'Afgelopen' : 'Leg ' + (S.legs[0] + S.legs[1] + 1);
   const r = S.rem[S.turn];
   $('co').textContent = S.winner === null && r <= 180 ? 'Uit: ' + checkout(r) : '';
-  $('stats').textContent = S.winner !== null ? esc(S.names[S.winner]) + ' wint ' + S.legs[S.winner] + '–' + S.legs[1 - S.winner] : esc(S.names[S.turn]) + ' aan de beurt';
-  if (document.activeElement !== $('t0')) $('t0').value = S.names[0];
-  if (document.activeElement !== $('t1')) $('t1').value = S.names[1];
-  if (document.activeElement !== $('firstTo')) $('firstTo').value = S.firstTo;
-  $('pip').querySelector('.pipname').textContent = S.winner === null ? S.names[S.turn] : '';
+  $('stats').textContent = S.winner !== null
+    ? teamName(S.teams[S.winner]) + ' wint ' + S.legs[S.winner] + '–' + S.legs[1 - S.winner]
+    : teamName(S.teams[S.turn]) + ' aan de beurt';
+  $('pipname').textContent = S.winner === null ? teamName(S.teams[S.turn]) : teamName(S.teams[S.winner]) + ' 🏆';
+  [0, 1].forEach(i => {
+    const sel = $('t' + i);
+    if (![...sel.options].some(o => o.value === S.teams[i])) { const o = document.createElement('option'); o.value = S.teams[i]; o.textContent = teamName(S.teams[i]); sel.appendChild(o); }
+    sel.value = S.teams[i];
+  });
+  $('bestOf').value = S.bestOf;
+  $('start').value = S.start;
+  renderStandings();
 }
-function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+/* ---------- Mini-klassement in het zijpaneel ---------- */
+function cellVal(str) {
+  const s = String(str || '').replace(/\s/g, '').replace(',', '.');
+  if (!/^[+-]?\d+(\.\d+)?([+-]\d+(\.\d+)?)*$/.test(s)) return 0;
+  return s.match(/[+-]?\d+(\.\d+)?/g).reduce((a, b) => a + parseFloat(b), 0);
+}
+function renderStandings() {
+  const list = TOURN.teams.map(t => ({ t, pts: (TOURN.cols || []).reduce((a, c) => a + cellVal((TOURN.cells || {})[t.id + '|' + c.id]), 0) }))
+    .sort((a, b) => b.pts - a.pts);
+  let pos = 0;
+  $('stTitle').textContent = (TOURN.title || 'Klassement') + ' · stand';
+  $('stList').innerHTML = list.map((x, i) => {
+    if (i === 0 || x.pts !== list[i - 1].pts) pos = i + 1;
+    const playing = S.teams.includes(x.t.id) ? ' class="playing"' : '';
+    const pts = Number.isInteger(x.pts) ? x.pts : x.pts.toFixed(1);
+    return '<li' + playing + '><span class="p">' + pos + '</span><span class="n">' + esc(x.t.name) + '</span><span class="t">' + pts + '</span></li>';
+  }).join('');
+}
 
 function flash(html, ms) {
   const f = $('flash'); f.innerHTML = html; f.classList.add('show');
@@ -199,7 +274,7 @@ function flash(html, ms) {
 
 function submit(txt) {
   if (txt === '') return;
-  if (S.winner !== null) return flash('Wedstrijd is voorbij<br><small>Nieuwe wedstrijd starten in de instellingen</small>', 2200);
+  if (S.winner !== null) return flash('Wedstrijd is voorbij<br><small>Start een nieuwe wedstrijd in de instellingen</small>', 2200);
   if (!/^\d{1,3}$/.test(txt)) return flash('Ongeldig');
   const pts = parseInt(txt, 10);
   if (pts > 180 || IMPOSSIBLE.has(pts)) return flash(pts + '?<br><small>onmogelijke score</small>');
@@ -213,13 +288,13 @@ function submit(txt) {
     S.last[t] = 0; flash('Overgooid!'); S.turn = 1 - t;
   } else if (pts === before) {
     S.tot[t] += pts; S.legs[t]++;
-    if (S.legs[t] >= S.firstTo) {
+    if (S.legs[t] >= firstTo()) {
       S.winner = t; S.rem[t] = 0; S.last[t] = pts;
-      flash(esc(S.names[t]) + '<br>wint de wedstrijd!', 5000);
+      flash(esc(teamName(S.teams[t])) + '<br>wint de wedstrijd!', 5000);
     } else {
-      flash(esc(S.names[t]) + '<br>wint de leg!', 2500);
+      flash(esc(teamName(S.teams[t])) + '<br>wint de leg!', 2500);
       S.starter = 1 - S.starter; S.turn = S.starter;
-      S.rem = [START, START]; S.last = [null, null];
+      S.rem = [S.start, S.start]; S.last = [null, null];
     }
   } else {
     S.tot[t] += pts; S.last[t] = pts; S.rem[t] = before - pts;
@@ -239,17 +314,21 @@ $('in').addEventListener('keydown', e => {
   else if (e.key === 'Escape') $('in').value = '';
 });
 $('undo').onclick = () => { undo(); $('in').focus(); };
-['t0', 't1'].forEach((id, i) => {
-  $(id).addEventListener('input', () => { S.names[i] = $(id).value.trim() || ('Team ' + (i + 1)); render(); save(); });
-  $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { $(id).blur(); $('in').focus(); } });
+[0, 1].forEach(i => $('t' + i).addEventListener('change', () => { S.teams[i] = $('t' + i).value; render(); save(); }));
+$('bestOf').addEventListener('change', () => {
+  S.bestOf = +$('bestOf').value;
+  const w = [0, 1].find(i => S.legs[i] >= firstTo());
+  S.winner = w === undefined ? null : w;
+  render(); save();
 });
-$('firstTo').addEventListener('change', () => {
-  const v = Math.max(1, Math.min(21, parseInt($('firstTo').value, 10) || 3));
-  S.firstTo = v; render(); save();
+$('start').addEventListener('change', () => {
+  const v = +$('start').value;
+  if (S.hist.length && !confirm('Startscore wijzigen naar ' + v + '? Dit start een nieuwe wedstrijd.')) { $('start').value = S.start; return; }
+  S = newMatch(S.teams.slice(), S.bestOf, v); render(); save();
 });
 $('newMatch').onclick = () => {
   if (confirm('Nieuwe wedstrijd starten? De huidige stand gaat verloren.')) {
-    S = newMatch(S.names.slice(), S.firstTo); render(); save(); $('in').focus();
+    S = newMatch(S.teams.slice(), S.bestOf, S.start); render(); save(); $('in').focus();
   }
 };
 
@@ -270,14 +349,15 @@ function setupZoom(name) {
     z.x = fx - (fx - z.x) * (ns / z.s); z.y = fy - (fy - z.y) * (ns / z.s); z.s = ns; apply();
   }
   el.addEventListener('wheel', e => {
-    e.preventDefault(); e.stopPropagation();
+    if (e.target.closest('#setup')) return;
+    e.preventDefault();
     const r = el.getBoundingClientRect();
     zoomAt(Math.exp(-e.deltaY * 0.0015), (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
   }, { passive: false });
   let drag = null;
   el.addEventListener('mousedown', e => {
     if (e.button !== 0 || z.s <= 1.001) return;
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault();
     drag = { x: e.clientX, y: e.clientY, zx: z.x, zy: z.y }; el.classList.add('dragging');
   });
   window.addEventListener('mousemove', e => {
@@ -285,7 +365,7 @@ function setupZoom(name) {
     z.x = drag.zx + (e.clientX - drag.x) / el.clientWidth; z.y = drag.zy + (e.clientY - drag.y) / el.clientHeight; apply();
   });
   window.addEventListener('mouseup', () => { if (drag) { drag = null; el.classList.remove('dragging'); } });
-  el.addEventListener('dblclick', e => { e.stopPropagation(); z = { s: 1, x: 0, y: 0 }; apply(); });
+  el.addEventListener('dblclick', () => { z = { s: 1, x: 0, y: 0 }; apply(); });
   window.addEventListener('resize', apply);
   views[name] = { el, video: el.querySelector('video'), msg: el.querySelector('.msg'), stream: null,
     reset() { z = { s: 1, x: 0, y: 0 }; apply(); }, apply };
@@ -297,26 +377,26 @@ document.querySelectorAll('[data-fit]').forEach(b => b.onclick = () => views[b.d
 document.querySelectorAll('[data-mir]').forEach(b => b.onclick = () => views[b.dataset.mir].video.classList.toggle('mirror'));
 document.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => views[b.dataset.reset].reset());
 
-/* ---------- Facecam-venster ---------- */
-const CORNERS = ['br', 'bl', 'tl', 'tr'];
-let pipCfg = Object.assign({ corner: 'tr', size: 24, on: true }, store.get('darts-match-pip') || {});
-function applyPip() {
-  const p = $('pip');
-  CORNERS.forEach(c => p.classList.remove(c));
-  p.classList.add(pipCfg.corner);
-  p.classList.toggle('off', !pipCfg.on);
-  p.style.width = pipCfg.size + 'vw';
-  store.set('darts-match-pip', pipCfg);
-  setTimeout(() => views.pip.apply(), 0);
+/* ---------- Indeling ---------- */
+let L = Object.assign({ right: false, side: 32, face: true, stand: true }, store.get('darts-match-layout') || {});
+function applyLayout() {
+  document.body.classList.toggle('side-right', L.right);
+  document.body.classList.toggle('noface', !L.face);
+  document.body.classList.toggle('nostand', !L.stand);
+  document.documentElement.style.setProperty('--side', L.side + 'vw');
+  store.set('darts-match-layout', L);
+  setTimeout(() => { views.main.apply(); views.pip.apply(); }, 0);
 }
-const pipCorner = () => { pipCfg.corner = CORNERS[(CORNERS.indexOf(pipCfg.corner) + 1) % 4]; applyPip(); };
-const pipSize = f => { pipCfg.size = Math.max(10, Math.min(50, Math.round(pipCfg.size * f))); applyPip(); };
-const pipToggle = () => { pipCfg.on = !pipCfg.on; applyPip(); };
-$('pipPos').onclick = pipCorner;
-$('pipSmaller').onclick = () => pipSize(0.85);
-$('pipBigger').onclick = () => pipSize(1.18);
-$('pipToggle').onclick = pipToggle;
-applyPip();
+const flipSide = () => { L.right = !L.right; applyLayout(); };
+const sideWidth = d => { L.side = Math.max(22, Math.min(50, L.side + d)); applyLayout(); };
+const toggleFace = () => { L.face = !L.face; applyLayout(); };
+const toggleStand = () => { L.stand = !L.stand; applyLayout(); };
+$('sideBtn').onclick = flipSide;
+$('narrow').onclick = () => sideWidth(-2);
+$('wide').onclick = () => sideWidth(2);
+$('faceToggle').onclick = toggleFace;
+$('standBtn').onclick = toggleStand;
+applyLayout();
 
 /* ---------- Camera's ---------- */
 let cams = [];
@@ -393,25 +473,23 @@ if (store.get('darts-match-tv')) document.body.classList.add('tv');
 
 document.addEventListener('keydown', e => {
   const a = document.activeElement;
-  if (a && a !== $('in') && (a.tagName === 'INPUT' || a.tagName === 'SELECT')) return;   // typen in instellingen
+  if (a && a !== $('in') && (a.tagName === 'INPUT' || a.tagName === 'SELECT')) return;
   if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); return; }
   if (e.ctrlKey || e.altKey || e.metaKey) return;
-  const k = e.key.toLowerCase();
   const act = {
     h: () => setTv(!document.body.classList.contains('tv')),
-    f: () => toggleFs(),
+    f: toggleFs,
     r: () => { views.main.reset(); views.pip.reset(); },
-    u: undo, p: pipCorner, c: pipToggle,
-    '[': () => pipSize(0.85), ']': () => pipSize(1.18)
-  }[k];
+    u: undo, l: flipSide, c: toggleFace, k: toggleStand,
+    '[': () => sideWidth(-2), ']': () => sideWidth(2)
+  }[e.key.toLowerCase()];
   if (act) { e.preventDefault(); act(); }
 });
-document.addEventListener('click', e => { if (!e.target.closest('#setup') && !e.target.closest('#score')) $('in').focus(); });
-
-// Teamnamen uit het klassement als keuzelijst bij de teamvelden
-(store.get('darts-toernooi-v1') || { teams: [] }).teams.forEach(t => {
-  const o = document.createElement('option'); o.value = t.name; $('teamlist').appendChild(o);
+document.addEventListener('click', e => {
+  if (!e.target.closest('#setup') && !e.target.closest('.entry')) $('in').focus();
 });
+// Na het kiezen in een dropdown terug naar het scoreveld
+document.querySelectorAll('#setup select').forEach(s => s.addEventListener('change', () => setTimeout(() => $('in').focus(), 0)));
 
 render();
 showSetup();
