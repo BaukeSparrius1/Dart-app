@@ -69,6 +69,7 @@
   #setup select { max-width: 220px; }
   #setup .red, #setup a.nav.cur { background: var(--red); }
   #help { font-size: 11px; color: var(--muted); }
+  #setup .zl { min-width: 2.6em; color: var(--cream); font-weight: 700; }
 
   .flash { position: fixed; left: 50%; top: 42%; transform: translate(-50%,-50%); font-size: clamp(30px, 5vw, 84px); font-weight: 900; color: var(--red-2); -webkit-text-stroke: 2px var(--cream); text-shadow: 0 0 24px #000; pointer-events: none; opacity: 0; transition: opacity .3s; text-align: center; z-index: 8; }
   .flash.show { opacity: 1; }
@@ -115,15 +116,21 @@
       </div>
       <div class="grp"><b>Bordcamera</b>
         <select id="camMain"></select>
+        <button data-zin="main" title="Inzoomen (+ of scrollen)">＋</button>
+        <button data-zout="main" title="Uitzoomen (−)">－</button>
+        <button data-reset="main">Zoom reset</button>
+        <span class="zl" id="zl-main"></span>
         <button data-fit="main">Vullen</button>
         <button data-mir="main">Spiegelen</button>
-        <button data-reset="main">Zoom reset</button>
         <button id="swap" title="Bordcamera en facecam omwisselen">⇄ Wissel met facecam</button>
       </div>
       <div class="grp"><b>Facecam</b>
         <select id="camPip"></select>
-        <button data-mir="pip">Spiegelen</button>
+        <button data-zin="pip" title="Inzoomen">＋</button>
+        <button data-zout="pip" title="Uitzoomen">－</button>
         <button data-reset="pip">Zoom reset</button>
+        <span class="zl" id="zl-pip"></span>
+        <button data-mir="pip">Spiegelen</button>
         <button id="faceToggle" title="Facecam aan/uit (C)">Aan/uit</button>
       </div>
       <div class="grp"><b>Indeling</b>
@@ -132,7 +139,7 @@
         <button id="wide" title="Paneel breder (])">Paneel ＋</button>
         <button id="standBtn" title="Klassement in paneel aan/uit (K)">Klassement aan/uit</button>
       </div>
-      <div id="help">H = TV-modus · F = volledig scherm · scrollen = zoomen · slepen = verschuiven · R = zoom reset · L = kant wisselen · [ ] = paneelbreedte · C = facecam · K = klassement · U = ongedaan · teamnamen stel je in bij Klassement</div>
+      <div id="help">H = TV-modus · F = volledig scherm · scrollen = zoomen · slepen = verschuiven · + / − = zoomen · pijltjes = verschuiven · R = zoom reset · L = kant wisselen · [ ] = paneelbreedte · C = facecam · K = klassement · U = ongedaan · teamnamen stel je in bij Klassement</div>
     </div>
   </div>
 </div>
@@ -342,6 +349,7 @@ function setupZoom(name) {
     z.x = Math.min(0, Math.max(1 - z.s, z.x)); z.y = Math.min(0, Math.max(1 - z.s, z.y));
     zw.style.transform = 'translate(' + (z.x * el.clientWidth) + 'px,' + (z.y * el.clientHeight) + 'px) scale(' + z.s + ')';
     el.classList.toggle('zoomed', z.s > 1.001);
+    const zl = $('zl-' + name); if (zl) zl.textContent = z.s > 1.001 ? z.s.toFixed(1) + '×' : '';
     store.set('darts-match-zoom-' + name, z);
   }
   function zoomAt(f, fx, fy) {
@@ -368,7 +376,9 @@ function setupZoom(name) {
   el.addEventListener('dblclick', () => { z = { s: 1, x: 0, y: 0 }; apply(); });
   window.addEventListener('resize', apply);
   views[name] = { el, video: el.querySelector('video'), msg: el.querySelector('.msg'), stream: null,
-    reset() { z = { s: 1, x: 0, y: 0 }; apply(); }, apply };
+    reset() { z = { s: 1, x: 0, y: 0 }; apply(); }, apply,
+    step(f) { zoomAt(f, 0.5, 0.5); },
+    pan(dx, dy) { z.x += dx; z.y += dy; apply(); } };
   apply();
 }
 setupZoom('main'); setupZoom('pip');
@@ -376,6 +386,8 @@ setupZoom('main'); setupZoom('pip');
 document.querySelectorAll('[data-fit]').forEach(b => b.onclick = () => views[b.dataset.fit].video.classList.toggle('cover'));
 document.querySelectorAll('[data-mir]').forEach(b => b.onclick = () => views[b.dataset.mir].video.classList.toggle('mirror'));
 document.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => views[b.dataset.reset].reset());
+document.querySelectorAll('[data-zin]').forEach(b => b.onclick = () => views[b.dataset.zin].step(1.25));
+document.querySelectorAll('[data-zout]').forEach(b => b.onclick = () => views[b.dataset.zout].step(0.8));
 
 /* ---------- Indeling ---------- */
 let L = Object.assign({ right: false, side: 32, face: true, stand: true }, store.get('darts-match-layout') || {});
@@ -481,7 +493,10 @@ document.addEventListener('keydown', e => {
     f: toggleFs,
     r: () => { views.main.reset(); views.pip.reset(); },
     u: undo, l: flipSide, c: toggleFace, k: toggleStand,
-    '[': () => sideWidth(-2), ']': () => sideWidth(2)
+    '[': () => sideWidth(-2), ']': () => sideWidth(2),
+    '+': () => views.main.step(1.25), '=': () => views.main.step(1.25), '-': () => views.main.step(0.8),
+    arrowleft: () => views.main.pan(0.04, 0), arrowright: () => views.main.pan(-0.04, 0),
+    arrowup: () => views.main.pan(0, 0.04), arrowdown: () => views.main.pan(0, -0.04)
   }[e.key.toLowerCase()];
   if (act) { e.preventDefault(); act(); }
 });

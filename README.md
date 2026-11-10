@@ -39,6 +39,7 @@ Wisselen tussen de pagina's kan via de knoppen *1 bord*, *2 borden* en *Klasseme
 
 Links (of rechts) een paneel met de facecam, het scorebord en de stand van het klassement; daarnaast het bord groot in beeld.
 Beweeg de muis om de instellingen te tonen: teams (keuzemenu, namen uit het klassement), best of 1–11, startscore 201/301/501, camera's en indeling.
+Zoomen: scrollen op het beeld, de ＋/－ knoppen of de toetsen **+ en −**, verschuiven met slepen of de pijltjestoetsen.
 Extra sneltoetsen: **L** = paneel naar de andere kant, **[ ]** = paneel smaller/breder, **C** = facecam aan/uit, **K** = klassement in het paneel aan/uit.
 
 ## Klassement
