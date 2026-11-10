@@ -103,6 +103,7 @@
     <span class="sep"></span>
     <button id="reset" class="red">Alles wissen</button>
     <button id="tvBtn" title="Alleen bekijken (H)">TV-modus</button>
+    <button id="openTv" title="Open een tweede venster zonder bediening voor de tv">📺 TV-scherm openen</button>
   </div>
 </header>
 
@@ -156,6 +157,33 @@ document.addEventListener('click', e => {
   const a = e.target.closest && e.target.closest('a[href$=".html"]');
   if (a && inShell) { e.preventDefault(); goPage(a.getAttribute('href')); }
 });
+
+// --- TV-scherm: een tweede venster zonder bediening dat alles van de laptop volgt ---
+const DISPLAY = inShell ? !!window.dartsDisplay : /[?&](tv|scherm)\b/i.test(location.search);
+function openTvWindow() {
+  const w = window.open(location.href.split(/[?#]/)[0] + '?tv', 'darts-tv', 'popup,width=1280,height=720');
+  if (!w) alert('Chrome blokkeerde het nieuwe venster. Klik rechts in de adresbalk op het pop-up-icoon, kies "Altijd toestaan" en probeer opnieuw.');
+}
+function syncSend(key, payload) {          // eenmalige gebeurtenis (bijv. "180!") naar het TV-scherm sturen
+  if (DISPLAY) return;
+  try { localStorage.setItem(key, JSON.stringify(Object.assign({ t: Date.now() }, payload))); } catch (e) {}
+}
+const syncVal = e => { try { return JSON.parse(e.newValue); } catch (x) { return e.newValue; } };
+if (DISPLAY) {
+  Storage.prototype.setItem = function () {};          // het TV-scherm verandert zelf nooit iets
+  Storage.prototype.removeItem = function () {};
+  document.body.classList.add('display', 'tv');
+  const st = document.createElement('style');
+  st.textContent = 'body.display #setup, body.display #nav, body.display #help, body.display .controls, body.display .entry,' +
+    ' body.display .warn, body.display #tvmsg, body.display .tools, body.display .edit-only, body.display #finalBtn,' +
+    ' body.display #grip, body.display .schema-tools, body.display .x { display: none !important; }' +
+    ' body.display #split { pointer-events: none; } body.display, body.display * { cursor: none !important; }';
+  document.head.appendChild(st);
+  const block = e => { e.stopImmediatePropagation(); if (e.cancelable) e.preventDefault(); };
+  ['wheel', 'mousedown', 'click', 'dblclick', 'paste', 'dragover', 'drop', 'input', 'change'].forEach(t => window.addEventListener(t, block, { capture: true, passive: false }));
+  window.addEventListener('keydown', e => { block(e); if (e.key === 'f' || e.key === 'F') toggleFs(); }, true);
+}
+{ const ot = document.getElementById('openTv'); if (ot) ot.onclick = openTvWindow; }
 
 const KEY = 'darts-toernooi-v1';
 const $ = id => document.getElementById(id);
@@ -361,9 +389,14 @@ document.addEventListener('paste', e => {
   const item = [...(e.clipboardData || {}).items || []].find(i => i.type.startsWith('image/'));
   if (item) { e.preventDefault(); loadSchemaFile(item.getAsFile()); }
 });
-$('schemaImg').onclick = () => { $('zoomImg').src = $('schemaImg').src; $('zoomView').classList.add('show'); };
-$('zoomView').onclick = () => $('zoomView').classList.remove('show');
-document.addEventListener('keydown', e => { if (e.key === 'Escape') $('zoomView').classList.remove('show'); });
+function setZoomView(show) {
+  if (show) $('zoomImg').src = $('schemaImg').src;
+  $('zoomView').classList.toggle('show', show);
+  syncSend('darts-schema-zoom', { show });
+}
+$('schemaImg').onclick = () => setZoomView(true);
+$('zoomView').onclick = () => setZoomView(false);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') setZoomView(false); });
 try { showSchema(localStorage.getItem(SCHEMA_KEY)); } catch (e) {}
 
 // TV-modus
@@ -374,10 +407,16 @@ document.addEventListener('keydown', e => {
   const a = document.activeElement;
   if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
   if (e.key === 'h' || e.key === 'H') setTv(!document.body.classList.contains('tv'));
-  if ((e.key === 's' || e.key === 'S') && $('schemaCard').classList.contains('has')) {
-    $('zoomView').classList.contains('show') ? $('zoomView').classList.remove('show') : $('schemaImg').click();
-  }
+  if ((e.key === 's' || e.key === 'S') && $('schemaCard').classList.contains('has')) setZoomView(!$('zoomView').classList.contains('show'));
   if (e.key === 'f' || e.key === 'F') toggleFs();
+});
+
+// TV-scherm: alles volgen wat er op de laptop verandert
+if (DISPLAY) window.addEventListener('storage', e => {
+  const v = syncVal(e), k = e.key || '';
+  if (k === KEY && v) { T = v; buildTable(); $('rules').value = T.rules || ''; renderRules(); }
+  else if (k === 'darts-schema-img') showSchema(e.newValue);
+  else if (k === 'darts-schema-zoom' && v) { if (v.show) $('zoomImg').src = $('schemaImg').src; $('zoomView').classList.toggle('show', !!v.show); }
 });
 
 buildTable();

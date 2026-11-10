@@ -21,6 +21,7 @@
   #nav.hidden { opacity: 0; pointer-events: none; }
   #nav a { color: #fff; text-decoration: none; background: var(--green); border: 1px solid var(--cream); border-radius: 4px; padding: 3px 8px; }
   #nav a.cur { background: var(--red); }
+  #nav button { font: inherit; color: #fff; background: var(--green-2); border: 1px solid var(--cream); border-radius: 4px; padding: 3px 8px; cursor: pointer; }
   body.tv #nav { display: none !important; }
   #tvmsg { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: var(--red); color: #fff; border: 2px solid var(--cream); padding: 10px 18px; border-radius: 8px; font-size: 18px; font-weight: 700; z-index: 10; opacity: 0; transition: opacity .3s; pointer-events: none; text-align: center; }
   #tvmsg.show { opacity: 1; }
@@ -73,7 +74,7 @@
 <div id="wrap"></div>
 <div id="help">H = TV-modus (bediening verbergen) · F = volledig scherm · scrollen = zoomen · slepen = verschuiven · R = zoom reset · Tab = ander bord</div>
 <div id="tvmsg"></div>
-<nav id="nav"><a href="een-bord.html">1 bord</a><a class="cur" href="twee-borden.html">2 borden</a><a href="klassement.html">Klassement</a></nav>
+<nav id="nav"><a href="een-bord.html">1 bord</a><a class="cur" href="twee-borden.html">2 borden</a><a href="klassement.html">Klassement</a><button id="openTv" title="Open een tweede venster zonder bediening voor de tv">📺 TV-scherm openen</button></nav>
 
 <template id="tpl">
   <div class="board">
@@ -129,6 +130,33 @@ document.addEventListener('click', e => {
   const a = e.target.closest && e.target.closest('a[href$=".html"]');
   if (a && inShell) { e.preventDefault(); goPage(a.getAttribute('href')); }
 });
+
+// --- TV-scherm: een tweede venster zonder bediening dat alles van de laptop volgt ---
+const DISPLAY = inShell ? !!window.dartsDisplay : /[?&](tv|scherm)\b/i.test(location.search);
+function openTvWindow() {
+  const w = window.open(location.href.split(/[?#]/)[0] + '?tv', 'darts-tv', 'popup,width=1280,height=720');
+  if (!w) alert('Chrome blokkeerde het nieuwe venster. Klik rechts in de adresbalk op het pop-up-icoon, kies "Altijd toestaan" en probeer opnieuw.');
+}
+function syncSend(key, payload) {          // eenmalige gebeurtenis (bijv. "180!") naar het TV-scherm sturen
+  if (DISPLAY) return;
+  try { localStorage.setItem(key, JSON.stringify(Object.assign({ t: Date.now() }, payload))); } catch (e) {}
+}
+const syncVal = e => { try { return JSON.parse(e.newValue); } catch (x) { return e.newValue; } };
+if (DISPLAY) {
+  Storage.prototype.setItem = function () {};          // het TV-scherm verandert zelf nooit iets
+  Storage.prototype.removeItem = function () {};
+  document.body.classList.add('display', 'tv');
+  const st = document.createElement('style');
+  st.textContent = 'body.display #setup, body.display #nav, body.display #help, body.display .controls, body.display .entry,' +
+    ' body.display .warn, body.display #tvmsg, body.display .tools, body.display .edit-only, body.display #finalBtn,' +
+    ' body.display #grip, body.display .schema-tools, body.display .x { display: none !important; }' +
+    ' body.display #split { pointer-events: none; } body.display, body.display * { cursor: none !important; }';
+  document.head.appendChild(st);
+  const block = e => { e.stopImmediatePropagation(); if (e.cancelable) e.preventDefault(); };
+  ['wheel', 'mousedown', 'click', 'dblclick', 'paste', 'dragover', 'drop', 'input', 'change'].forEach(t => window.addEventListener(t, block, { capture: true, passive: false }));
+  window.addEventListener('keydown', e => { block(e); if (e.key === 'f' || e.key === 'F') toggleFs(); }, true);
+}
+{ const ot = document.getElementById('openTv'); if (ot) ot.onclick = openTvWindow; }
 
 const IMPOSSIBLE = new Set([163,166,169,172,173,175,176,178,179]);
 const STORE_KEY = 'darts301-v1';
@@ -253,8 +281,12 @@ function makeBoard(idx) {
       b.state = newMatch(b.state.teams.slice(), b.state.bestOf, b.state.start); render(b); save();
     }
   };
-  el.querySelector('.fit').onclick = () => b.video.classList.toggle('cover');
-  el.querySelector('.mir').onclick = () => b.video.classList.toggle('mirror');
+  b.vid = (() => { try { return JSON.parse(localStorage.getItem('darts-video-' + idx)) || {}; } catch (e) { return {}; } })();
+  b.applyVid = () => { b.video.classList.toggle('cover', !!b.vid.cover); b.video.classList.toggle('mirror', !!b.vid.mirror); };
+  const togVid = k => { b.vid[k] = !b.vid[k]; try { localStorage.setItem('darts-video-' + idx, JSON.stringify(b.vid)); } catch (e) {} b.applyVid(); };
+  el.querySelector('.fit').onclick = () => togVid('cover');
+  el.querySelector('.mir').onclick = () => togVid('mirror');
+  b.applyVid();
   b.sel.onchange = () => startCam(b, b.sel.value);
   el.querySelector('.swap').onclick = async () => {
     const ids = boards.map(x => curId(x));
@@ -297,6 +329,7 @@ function setupZoom(b) {
   }
   b.zoom = {
     reset() { z = { s: 1, x: 0, y: 0 }; apply(); },
+    load(nz) { z = nz && nz.s >= 1 ? nz : { s: 1, x: 0, y: 0 }; apply(); },
     step(f) { zoomAt(f, 0.5, 0.5); },
     zoomed() { return z.s > 1.001; },
     pan(dx, dy) { z.x += dx; z.y += dy; apply(); }
@@ -405,7 +438,8 @@ function render(b) {
 function esc(t) { return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 let flashTimer = {};
-function showFlash(b, html, ms) {
+function showFlash(b, html, ms, local) {
+  if (!local) syncSend('darts-flash2', { idx: b.idx, html, ms });
   b.flash.innerHTML = html;
   b.flash.classList.add('show');
   clearTimeout(flashTimer[b.idx]);
@@ -413,19 +447,29 @@ function showFlash(b, html, ms) {
 }
 
 /* ---------- Camera's ---------- */
-async function startCam(b, deviceId) {
-  if (b.stream) b.stream.getTracks().forEach(t => t.stop());
+async function startCam(b, deviceId, retry) {
+  b.want = deviceId;
+  const token = b.camToken = (b.camToken || 0) + 1;
+  if (b.stream) { b.stream.getTracks().forEach(t => t.stop()); b.stream = null; }
   try {
-    b.stream = await navigator.mediaDevices.getUserMedia({
+    const st = await navigator.mediaDevices.getUserMedia({
       video: { deviceId: deviceId ? { exact: deviceId } : undefined, width: { ideal: 1920 }, height: { ideal: 1080 } },
       audio: false
     });
-    b.video.srcObject = b.stream;
+    if (token !== b.camToken) { st.getTracks().forEach(t => t.stop()); return; }   // intussen al een andere camera gekozen
+    b.stream = st;
+    b.video.srcObject = st;
     b.msg.style.display = 'none';
-    try { localStorage.setItem('darts-cam2-' + b.idx, b.stream.getVideoTracks()[0].getSettings().deviceId || ''); } catch (e) {}
+    try {
+      localStorage.setItem('darts-cam2-' + b.idx, st.getVideoTracks()[0].getSettings().deviceId || '');
+      localStorage.setItem('darts-camlabel2-' + b.idx, st.getVideoTracks()[0].label);   // naam: hetzelfde in elk venster
+    } catch (e) {}
   } catch (e) {
+    if (token !== b.camToken) return;
+    // camera kan even bezet zijn (bijv. door het andere venster): één keer opnieuw proberen
+    if (!retry) { setTimeout(() => { if (token === b.camToken) startCam(b, deviceId, true); }, 1200); return; }
     b.msg.style.display = 'flex';
-    b.msg.textContent = 'Kan deze camera niet openen (' + e.message + '). Kies een andere camera in het menu bovenin.';
+    b.msg.textContent = 'Kan deze camera niet openen (' + (e.message || e.name) + '). Kies een andere camera in het menu bovenin.';
   }
   await refreshCams();
 }
@@ -476,7 +520,12 @@ async function init() {
   const rank = d => /iriun/i.test(d.label) ? 0 : /camo/i.test(d.label) ? 3 : /integrated|ingebouwd|hd webcam|front/i.test(d.label) ? 2 : 1;
   const sorted = cams.slice().sort((a, b) => rank(a) - rank(b));
   // Eerder gekozen camera per bord onthouden, anders de eerste twee telefooncamera's
-  const remembered = i => { try { const id = localStorage.getItem('darts-cam2-' + i); return cams.some(c => c.deviceId === id) ? id : null; } catch (e) { return null; } };
+  const remembered = i => {
+    let id = null, lb = null;
+    try { id = localStorage.getItem('darts-cam2-' + i); lb = localStorage.getItem('darts-camlabel2-' + i); } catch (e) {}
+    const c = cams.find(x => x.deviceId === id) || cams.find(x => lb && x.label === lb);
+    return c ? c.deviceId : null;
+  };
   const pick0 = remembered(0) || (sorted[0] && sorted[0].deviceId);
   const pick1 = remembered(1) || (sorted.find(c => c.deviceId !== pick0) || sorted[0] || {}).deviceId;
   await startCam(boards[0], pick0);
@@ -543,6 +592,27 @@ document.addEventListener('keydown', e => {
     const d = 0.04;
     activeBoard().zoom.pan(e.key === 'ArrowLeft' ? d : e.key === 'ArrowRight' ? -d : 0, e.key === 'ArrowUp' ? d : e.key === 'ArrowDown' ? -d : 0);
   }
+});
+
+// TV-scherm: alles volgen wat er op de laptop verandert
+function refillTeams() {
+  boards.forEach(b => b.el.querySelectorAll('select.name').forEach(sel => {
+    sel.innerHTML = '';
+    TOURN.teams.forEach(t => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; sel.appendChild(o); });
+  }));
+}
+if (DISPLAY) window.addEventListener('storage', e => {
+  const v = syncVal(e), k = e.key || '';
+  const i = parseInt(k.slice(-1), 10), b = boards[i];
+  if (k === STORE_KEY && v && v.boards) { boards.forEach((bb, j) => { bb.state = migrate(v.boards[j], j); render(bb); }); }
+  else if (k === 'darts-toernooi-v1' && v) { Object.assign(TOURN, v); refillTeams(); boards.forEach(render); }
+  else if (k.startsWith('darts-zoom-') && b) b.zoom.load(v);
+  else if (k.startsWith('darts-camlabel2-') && b) {
+    const c = cams.find(x => x.label === e.newValue);        // camera-ID's kunnen per venster verschillen, namen niet
+    if (c && c.deviceId !== b.want) startCam(b, c.deviceId);
+  }
+  else if (k.startsWith('darts-video-') && b) { b.vid = v || {}; b.applyVid(); }
+  else if (k === 'darts-flash2' && v && boards[v.idx]) showFlash(boards[v.idx], v.html, v.ms, true);
 });
 
 init();

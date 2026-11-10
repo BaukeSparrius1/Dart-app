@@ -35,6 +35,11 @@ Stand, spelersnamen, camerakeuze en zoom worden lokaal in de browser bewaard.
 
 Wisselen tussen de pagina's kan via de knoppen *1 bord*, *2 borden* en *Klassement* (beweeg de muis om ze te tonen). Na het wisselen moet je volledig scherm (F) opnieuw aanzetten.
 
+## Laptop + tv (TV-scherm)
+
+Klik op **📺 TV-scherm openen** (bij de paginaknoppen). Er opent een tweede venster zonder bediening: alleen camerabeelden, scores, klassement en meldingen.
+Sleep dat venster naar de tv (of **Win+Shift+→**), klik erin en druk op **F** voor volledig scherm. Alles wat je op de laptop doet (scores, zoom, indeling, camera's, pagina wisselen) volgt het TV-scherm direct; het TV-scherm zelf kan niets wijzigen.
+
 ## 1 bord
 
 Links (of rechts) een paneel met de facecam, het scorebord en de stand van het klassement; daarnaast het bord groot in beeld.

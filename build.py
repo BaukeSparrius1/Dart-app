@@ -27,17 +27,26 @@ html = """<!doctype html>
 (function () {
   var P = __DATA__;
   var key = function (n) { return '#' + n.replace('.html', ''); };
+  // ?tv in het adres = TV-scherm: geen bediening, volgt de pagina en alle wijzigingen van de laptop
+  var display = window.dartsDisplay = /[?&](tv|scherm)(?![a-z])/i.test(location.search);
   window.dartsShow = function (n) {
-    if (!P[n]) return;
+    if (!P[n] || display) return;
     try { localStorage.setItem('darts-shell-page', n); } catch (e) {}
     location.hash = key(n);
     location.reload();
   };
-  var s = location.hash.slice(1) + '.html';
-  if (!P[s]) { try { s = localStorage.getItem('darts-shell-page'); } catch (e) { s = null; } }
+  var s = location.hash.slice(1) + '.html', stored = null;
+  try { stored = localStorage.getItem('darts-shell-page'); } catch (e) {}
+  if (display || !P[s]) s = stored;
   if (!P[s]) s = 'twee-borden.html';
-  try { localStorage.setItem('darts-shell-page', s); } catch (e) {}
+  if (!display) { try { localStorage.setItem('darts-shell-page', s); } catch (e) {} }
   if (location.hash !== key(s)) history.replaceState(null, '', key(s));
+  if (display) {
+    window.addEventListener('storage', function (e) {
+      if (e.key === 'darts-shell-page' && P[e.newValue] && e.newValue !== s) { location.hash = key(e.newValue); location.reload(); }
+    });
+    document.title = 'TV-scherm';
+  }
   document.write(P[s]);
 })();
 </script>
