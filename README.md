@@ -26,5 +26,12 @@ Stand, spelersnamen, camerakeuze en zoom worden lokaal in de browser bewaard.
 
 ## Bestanden
 
-- `index.html` – twee camera's met scorebord
+- `index.html` – twee borden tegelijk: twee camera's met elk een scorebord
+- `wedstrijd.html` – één wedstrijd tussen twee teams: bordcamera groot in beeld, facecam van de darter als klein venster, instelbare teamnamen en "first to X legs"
 - `camera.html` – één camerabeeld, schermvullend
+
+## wedstrijd.html
+
+Beweeg de muis om de instellingen te tonen: teamnamen, aantal legs om te winnen, camera voor het bord en voor de facecam.
+Extra sneltoetsen: **P** = facecam naar een andere hoek, **[ ]** = facecam kleiner/groter, **C** = facecam aan/uit.
+In de facecam staat de naam van het team dat aan de beurt is.
