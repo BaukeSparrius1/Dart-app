@@ -47,4 +47,5 @@ Extra sneltoetsen: **L** = paneel naar de andere kant, **[ ]** = paneel smaller/
 - Voeg kolommen toe met **+ Dartronde** en **+ Minigame**; verwijder ze met het kruisje.
 - Typ per team de punten. Optellen in het vakje mag (`3+1`). Enter springt naar het vakje eronder.
 - **Finale starten** zet de nummers 1 en 2 als teams op de 1-bordpagina en opent die.
+- Onder de tabel staat een tekstvak voor **regels** (bijv. van het drankspel), één regel per lijn. In TV-modus worden ze als lijst getoond.
 - **H** = TV-modus (alleen bekijken), **F** = volledig scherm.
