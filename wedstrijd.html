@@ -55,6 +55,8 @@
   #setup input[type=number] { width: 52px; }
   #setup select { max-width: 200px; }
   #setup button { cursor: pointer; }
+  #setup a.nav { color: #fff; text-decoration: none; background: var(--green); border: 1px solid var(--cream); border-radius: 4px; padding: 3px 8px; }
+  #setup a.nav.cur { background: var(--red); }
   #setup button.red { background: var(--red); }
   #help { grid-column: 1 / -1; font-size: 11px; color: var(--muted); text-align: center; }
 
@@ -76,9 +78,13 @@
 
 <div id="setup">
   <div class="grp"><b>Teams</b>
-    <input type="text" id="t0" maxlength="30" placeholder="Team 1">
+    <input type="text" id="t0" maxlength="30" placeholder="Team 1" list="teamlist">
     <span>vs</span>
-    <input type="text" id="t1" maxlength="30" placeholder="Team 2">
+    <input type="text" id="t1" maxlength="30" placeholder="Team 2" list="teamlist">
+    <datalist id="teamlist"></datalist>
+  </div>
+  <div class="grp"><b>Pagina</b>
+    <a class="nav cur" href="wedstrijd.html">1 bord</a><a class="nav" href="index.html">2 borden</a><a class="nav" href="klassement.html">Klassement</a>
   </div>
   <div class="grp"><b>Wedstrijd</b>
     <label>First to <input type="number" id="firstTo" min="1" max="21"> legs</label>
@@ -390,6 +396,11 @@ document.addEventListener('keydown', e => {
   if (act) { e.preventDefault(); act(); }
 });
 document.addEventListener('click', e => { if (!e.target.closest('#setup') && !e.target.closest('#score')) $('in').focus(); });
+
+// Teamnamen uit het klassement als keuzelijst bij de teamvelden
+(store.get('darts-toernooi-v1') || { teams: [] }).teams.forEach(t => {
+  const o = document.createElement('option'); o.value = t.name; $('teamlist').appendChild(o);
+});
 
 render();
 showSetup();

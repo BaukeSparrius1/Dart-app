@@ -28,10 +28,21 @@ Stand, spelersnamen, camerakeuze en zoom worden lokaal in de browser bewaard.
 
 - `index.html` – twee borden tegelijk: twee camera's met elk een scorebord
 - `wedstrijd.html` – één wedstrijd tussen twee teams: bordcamera groot in beeld, facecam van de darter als klein venster, instelbare teamnamen en "first to X legs"
+- `klassement.html` – totaalstand van alle teams over dartrondes en minigames, met knop om de finale te starten
 - `camera.html` – één camerabeeld, schermvullend
+
+Wisselen tussen de pagina's kan via de knoppen *1 bord*, *2 borden* en *Klassement* (beweeg de muis om ze te tonen).
 
 ## wedstrijd.html
 
 Beweeg de muis om de instellingen te tonen: teamnamen, aantal legs om te winnen, camera voor het bord en voor de facecam.
 Extra sneltoetsen: **P** = facecam naar een andere hoek, **[ ]** = facecam kleiner/groter, **C** = facecam aan/uit.
 In de facecam staat de naam van het team dat aan de beurt is.
+
+## klassement.html
+
+- Stel het aantal teams in en klik op een team- of kolomnaam om die te wijzigen.
+- Voeg kolommen toe met **+ Dartronde** en **+ Minigame**; verwijder ze met het kruisje.
+- Typ per team de punten. Optellen in het vakje mag (`3+1`). Enter springt naar het vakje eronder.
+- **Finale starten** zet de nummers 1 en 2 als teams op de 1-bordpagina en opent die.
+- **H** = TV-modus (alleen bekijken), **F** = volledig scherm.
