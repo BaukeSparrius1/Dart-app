@@ -84,7 +84,7 @@
     <datalist id="teamlist"></datalist>
   </div>
   <div class="grp"><b>Pagina</b>
-    <a class="nav cur" href="wedstrijd.html">1 bord</a><a class="nav" href="index.html">2 borden</a><a class="nav" href="klassement.html">Klassement</a>
+    <a class="nav cur" href="een-bord.html">1 bord</a><a class="nav" href="twee-borden.html">2 borden</a><a class="nav" href="klassement.html">Klassement</a>
   </div>
   <div class="grp"><b>Wedstrijd</b>
     <label>First to <input type="number" id="firstTo" min="1" max="21"> legs</label>
@@ -124,6 +124,17 @@
 <div class="flash" id="flash"></div>
 
 <script>
+// --- Navigatie en volledig scherm: werkt los én binnen het gecombineerde bestand ---
+const inShell = typeof window.dartsShow === 'function';
+function goPage(p) { if (inShell) window.dartsShow(p); else location.href = p; }
+function toggleFs() {
+  document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {});
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href$=".html"]');
+  if (a && inShell) { e.preventDefault(); goPage(a.getAttribute('href')); }
+});
+
 const START = 301;
 const IMPOSSIBLE = new Set([163,166,169,172,173,175,176,178,179]);
 const KEY = 'darts-match-v1';
@@ -388,7 +399,7 @@ document.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   const act = {
     h: () => setTv(!document.body.classList.contains('tv')),
-    f: () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}),
+    f: () => toggleFs(),
     r: () => { views.main.reset(); views.pip.reset(); },
     u: undo, p: pipCorner, c: pipToggle,
     '[': () => pipSize(0.85), ']': () => pipSize(1.18)

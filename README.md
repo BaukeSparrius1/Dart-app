@@ -26,20 +26,22 @@ Stand, spelersnamen, camerakeuze en zoom worden lokaal in de browser bewaard.
 
 ## Bestanden
 
-- `index.html` – twee borden tegelijk: twee camera's met elk een scorebord
-- `wedstrijd.html` – één wedstrijd tussen twee teams: bordcamera groot in beeld, facecam van de darter als klein venster, instelbare teamnamen en "first to X legs"
-- `klassement.html` – totaalstand van alle teams over dartrondes en minigames, met knop om de finale te starten
+- `index.html` – **alles in één bestand**: 1 bord, 2 borden en klassement. Dit is het bestand om te openen of te downloaden.
+- `src/een-bord.html` – één wedstrijd tussen twee teams: bordcamera groot in beeld, facecam als klein venster, instelbare teamnamen en "first to X legs"
+- `src/twee-borden.html` – twee borden tegelijk: twee camera's met elk een scorebord
+- `src/klassement.html` – totaalstand van alle teams over dartrondes en minigames, met knop om de finale te starten
+- `build.py` – voegt de pagina's in `src/` samen tot `index.html`. Draai `python3 build.py` na elke wijziging in `src/`.
 - `camera.html` – één camerabeeld, schermvullend
 
-Wisselen tussen de pagina's kan via de knoppen *1 bord*, *2 borden* en *Klassement* (beweeg de muis om ze te tonen).
+Wisselen tussen de pagina's kan via de knoppen *1 bord*, *2 borden* en *Klassement* (beweeg de muis om ze te tonen). Na het wisselen moet je volledig scherm (F) opnieuw aanzetten.
 
-## wedstrijd.html
+## 1 bord
 
 Beweeg de muis om de instellingen te tonen: teamnamen, aantal legs om te winnen, camera voor het bord en voor de facecam.
 Extra sneltoetsen: **P** = facecam naar een andere hoek, **[ ]** = facecam kleiner/groter, **C** = facecam aan/uit.
 In de facecam staat de naam van het team dat aan de beurt is.
 
-## klassement.html
+## Klassement
 
 - Stel het aantal teams in en klik op een team- of kolomnaam om die te wijzigen.
 - Voeg kolommen toe met **+ Dartronde** en **+ Minigame**; verwijder ze met het kruisje.

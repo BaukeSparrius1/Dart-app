@@ -66,7 +66,7 @@
 <header>
   <h1><input id="title" maxlength="60" aria-label="Naam van het toernooi"></h1>
   <div class="tools">
-    <a href="wedstrijd.html">1 bord</a><a href="index.html">2 borden</a><a class="cur" href="klassement.html">Klassement</a>
+    <a href="een-bord.html">1 bord</a><a href="twee-borden.html">2 borden</a><a class="cur" href="klassement.html">Klassement</a>
     <span class="sep"></span>
     <label>Teams <input type="number" id="nTeams" min="2" max="16"></label>
     <button id="addDarts">+ Dartronde</button>
@@ -92,6 +92,17 @@
 </main>
 
 <script>
+// --- Navigatie en volledig scherm: werkt los én binnen het gecombineerde bestand ---
+const inShell = typeof window.dartsShow === 'function';
+function goPage(p) { if (inShell) window.dartsShow(p); else location.href = p; }
+function toggleFs() {
+  document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {});
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href$=".html"]');
+  if (a && inShell) { e.preventDefault(); goPage(a.getAttribute('href')); }
+});
+
 const KEY = 'darts-toernooi-v1';
 const $ = id => document.getElementById(id);
 const store = {
@@ -230,7 +241,7 @@ $('finalBtn').onclick = () => {
     names: [a, b], firstTo: old.firstTo || 3, legs: [0, 0], starter: 0, turn: 0,
     rem: [301, 301], tot: [0, 0], cnt: [0, 0], last: [null, null], winner: null, hist: []
   });
-  location.href = 'wedstrijd.html';
+  goPage('een-bord.html');
 };
 
 // TV-modus
@@ -241,7 +252,7 @@ document.addEventListener('keydown', e => {
   const a = document.activeElement;
   if (a && a.tagName === 'INPUT') return;
   if (e.key === 'h' || e.key === 'H') setTv(!document.body.classList.contains('tv'));
-  if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {});
+  if (e.key === 'f' || e.key === 'F') toggleFs();
 });
 
 buildTable();
