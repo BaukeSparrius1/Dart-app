@@ -12,14 +12,23 @@
   /* ---------- Indeling: zijpaneel (facecam + score) en bord ---------- */
   #layout { display: flex; width: 100vw; height: 100vh; }
   body.side-right #layout { flex-direction: row-reverse; }
-  #side { width: var(--side); flex: none; display: flex; flex-direction: column; gap: 12px; padding: 14px; background: linear-gradient(180deg, #0b3a22, var(--bg)); border-right: 6px solid var(--red); overflow: hidden; }
-  body.side-right #side { border-right: 0; border-left: 6px solid var(--red); }
+  #side { width: var(--side); flex: none; display: flex; flex-direction: column; gap: 12px; padding: 14px; background: linear-gradient(180deg, #0b3a22, var(--bg)); overflow: hidden; }
+  #split { flex: none; width: 6px; background: var(--red); cursor: col-resize; position: relative; z-index: 7; }
+  #split::after { content: ""; position: absolute; inset: 0 -6px; }            /* groter grijpvlak */
+  #split:hover, #split.drag { background: var(--red-2); box-shadow: 0 0 0 2px var(--cream); }
   #boardArea { position: relative; flex: 1; min-width: 0; }
 
   .view { position: relative; overflow: hidden; background: var(--bg); }
   #main { position: absolute; inset: 0; }
   #pip { width: 100%; aspect-ratio: 16 / 9; flex: none; border: 3px solid var(--cream); border-radius: 10px; }
-  body.noface #pip { display: none; }
+  #pip.custom { aspect-ratio: auto; }
+  #pip.fill { aspect-ratio: auto; flex: 1 1 0; min-height: 120px; }
+  body.noface #pip, body.noface #grip { display: none; }
+  #grip { flex: none; height: 12px; margin: -10px 0 -4px; cursor: row-resize; display: flex; align-items: center; justify-content: center; }
+  #grip::before { content: ""; width: 60px; height: 5px; border-radius: 3px; background: rgba(242,230,201,.45); }
+  #grip:hover::before, #grip.drag::before { background: var(--cream); width: 90px; }
+  body.dragging-ui, body.dragging-ui * { user-select: none; }
+  #score { flex: none; }
   .pipname { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,.8)); padding: 18px 12px 8px; font-weight: 800; font-size: clamp(13px, 1.3vw, 24px); color: var(--cream); pointer-events: none; z-index: 2; }
   .zw { position: absolute; inset: 0; transform-origin: 0 0; will-change: transform; }
   .view video { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--bg); }
@@ -50,7 +59,7 @@
   .entry button { font-size: clamp(11px, .85vw, 14px); padding: 4px 9px; border-radius: 6px; border: 0; cursor: pointer; background: var(--red); color: #fff; font-weight: 600; }
 
   /* ---------- Mini-klassement ---------- */
-  #standings { margin-top: auto; background: var(--panel); border: 2px solid var(--cream); border-radius: 8px; overflow: hidden; }
+  #standings { margin-top: auto; flex: 0 1 auto; min-height: 0; background: var(--panel); border: 2px solid var(--cream); border-radius: 8px; overflow: hidden; }
   body.nostand #standings { display: none; }
   #standings h3 { margin: 0; background: var(--green-2); padding: 4px 12px; font-size: clamp(10px, .8vw, 14px); text-transform: uppercase; letter-spacing: .5px; color: var(--cream); }
   #standings ol { list-style: none; margin: 0; padding: 4px 6px; }
@@ -80,12 +89,15 @@
   body.tv, body.tv * { cursor: none !important; }
   body.tv .entry input { border-color: transparent; background: transparent; color: transparent; caret-color: transparent; }
   body.tv .entry input::placeholder { color: transparent; }
+  body.tv #grip { visibility: hidden; pointer-events: none; }
+  body.tv #split { pointer-events: none; }
 </style>
 </head>
 <body>
 <div id="layout">
   <aside id="side">
     <div class="view" id="pip"><div class="zw"><video autoplay playsinline muted></video></div><div class="msg"></div><div class="pipname" id="pipname"></div></div>
+    <div id="grip" title="Sleep om de facecam hoger of lager te maken"></div>
     <div id="score">
       <div class="sb-head"><span id="fmt"></span><span id="legNo"></span></div>
       <div class="sb">
@@ -100,6 +112,7 @@
     </div>
     <div id="standings"><h3 id="stTitle">Klassement</h3><ol id="stList"></ol></div>
   </aside>
+  <div id="split" title="Sleep om het paneel breder of smaller te maken"></div>
 
   <div id="boardArea">
     <div class="view" id="main"><div class="zw"><video autoplay playsinline muted></video></div><div class="msg">Camera wordt geopend…</div></div>
@@ -132,6 +145,7 @@
         <span class="zl" id="zl-pip"></span>
         <button data-mir="pip">Spiegelen</button>
         <button id="faceToggle" title="Facecam aan/uit (C)">Aan/uit</button>
+        <button id="faceShape" title="Vorm van de facecam wisselen (V)">Vorm: <span id="shapeLbl"></span></button>
       </div>
       <div class="grp"><b>Indeling</b>
         <button id="sideBtn" title="Paneel links/rechts (L)">⇆ Kant wisselen</button>
@@ -139,7 +153,7 @@
         <button id="wide" title="Paneel breder (])">Paneel ＋</button>
         <button id="standBtn" title="Klassement in paneel aan/uit (K)">Klassement aan/uit</button>
       </div>
-      <div id="help">H = TV-modus · F = volledig scherm · scrollen = zoomen · slepen = verschuiven · + / − = zoomen · pijltjes = verschuiven · R = zoom reset · L = kant wisselen · [ ] = paneelbreedte · C = facecam · K = klassement · U = ongedaan · teamnamen stel je in bij Klassement</div>
+      <div id="help">H = TV-modus · F = volledig scherm · scrollen = zoomen · slepen = verschuiven · + / − = zoomen · pijltjes = verschuiven · R = zoom reset · L = kant wisselen · [ ] = paneelbreedte · V = vorm facecam · sleep de rode lijn of het streepje onder de facecam om de maten aan te passen · C = facecam · K = klassement · U = ongedaan · teamnamen stel je in bij Klassement</div>
     </div>
   </div>
 </div>
@@ -390,17 +404,58 @@ document.querySelectorAll('[data-zin]').forEach(b => b.onclick = () => views[b.d
 document.querySelectorAll('[data-zout]').forEach(b => b.onclick = () => views[b.dataset.zout].step(0.8));
 
 /* ---------- Indeling ---------- */
-let L = Object.assign({ right: false, side: 32, face: true, stand: true }, store.get('darts-match-layout') || {});
+let L = Object.assign({ right: false, side: 32, face: true, stand: true, shape: 'breed', faceH: 50 }, store.get('darts-match-layout') || {});
+const SHAPES = { breed: 'breed (16:9)', staand: 'staand', max: 'zo hoog mogelijk', eigen: 'eigen maat' };
+// Hoogte van de facecam in px voor de vormen 'staand' en 'eigen'
+function faceHeightPx() {
+  const side = $('side'), pip = $('pip');
+  const room = side.clientHeight - 28 - $('score').offsetHeight - 24 - 12;   // padding, gaps, greep
+  const want = L.shape === 'staand' ? pip.clientWidth * 4 / 3 : L.faceH / 100 * innerHeight;
+  return Math.max(120, Math.min(room, want));
+}
 function applyLayout() {
   document.body.classList.toggle('side-right', L.right);
   document.body.classList.toggle('noface', !L.face);
   document.body.classList.toggle('nostand', !L.stand);
   document.documentElement.style.setProperty('--side', L.side + 'vw');
+  const pip = $('pip');
+  pip.classList.toggle('fill', L.shape === 'max');
+  pip.classList.toggle('custom', L.shape === 'staand' || L.shape === 'eigen');
+  pip.style.height = '';
+  if (L.shape === 'staand' || L.shape === 'eigen') pip.style.height = faceHeightPx() + 'px';
+  $('shapeLbl').textContent = SHAPES[L.shape] || L.shape;
   store.set('darts-match-layout', L);
   setTimeout(() => { views.main.apply(); views.pip.apply(); }, 0);
 }
 const flipSide = () => { L.right = !L.right; applyLayout(); };
-const sideWidth = d => { L.side = Math.max(22, Math.min(50, L.side + d)); applyLayout(); };
+const sideWidth = d => { L.side = Math.max(18, Math.min(60, L.side + d)); applyLayout(); };
+const cycleShape = () => { const k = ['breed', 'staand', 'max']; L.shape = k[(k.indexOf(L.shape) + 1) % k.length]; applyLayout(); };
+$('faceShape').onclick = cycleShape;
+window.addEventListener('resize', applyLayout);
+
+// Slepen: rode lijn = paneelbreedte, streepje onder de facecam = hoogte facecam
+function dragUI(handle, onMove) {
+  handle.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    handle.classList.add('drag'); document.body.classList.add('dragging-ui');
+    const move = ev => onMove(ev);
+    const up = () => { handle.classList.remove('drag'); document.body.classList.remove('dragging-ui');
+      window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+  });
+}
+dragUI($('split'), ev => {
+  const x = L.right ? innerWidth - ev.clientX : ev.clientX;
+  L.side = Math.round(Math.max(18, Math.min(60, x / innerWidth * 100)) * 2) / 2;
+  applyLayout();
+});
+dragUI($('grip'), ev => {
+  const top = $('pip').getBoundingClientRect().top;
+  L.shape = 'eigen';
+  L.faceH = Math.max(10, Math.min(90, (ev.clientY - top) / innerHeight * 100));
+  applyLayout();
+});
 const toggleFace = () => { L.face = !L.face; applyLayout(); };
 const toggleStand = () => { L.stand = !L.stand; applyLayout(); };
 $('sideBtn').onclick = flipSide;
@@ -492,7 +547,7 @@ document.addEventListener('keydown', e => {
     h: () => setTv(!document.body.classList.contains('tv')),
     f: toggleFs,
     r: () => { views.main.reset(); views.pip.reset(); },
-    u: undo, l: flipSide, c: toggleFace, k: toggleStand,
+    u: undo, l: flipSide, c: toggleFace, k: toggleStand, v: cycleShape,
     '[': () => sideWidth(-2), ']': () => sideWidth(2),
     '+': () => views.main.step(1.25), '=': () => views.main.step(1.25), '-': () => views.main.step(0.8),
     arrowleft: () => views.main.pan(0.04, 0), arrowright: () => views.main.pan(-0.04, 0),
